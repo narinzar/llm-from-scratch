@@ -1,0 +1,40 @@
+# Install PyTorch FIRST and SEPARATELY — it is deliberately not listed here.
+#
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+#
+# The --index-url is required on RTX 50-series (Blackwell, sm_120). A plain
+# `pip install torch` pulls a build with no sm_120 kernels; CUDA will report as
+# available and then fail on the first matmul. See SETUP.md.
+
+# --- core ---
+numpy>=1.26
+transformers>=4.46
+datasets>=3.0
+tokenizers>=0.20
+accelerate>=1.0
+safetensors>=0.4
+huggingface_hub[cli]>=0.26
+regex>=2024.5            # notebook 02 needs \p{L} unicode classes; stdlib re does not
+
+# --- post-training (notebooks 08-13) ---
+trl>=0.12
+peft>=0.13
+bitsandbytes>=0.45       # QLoRA. Needs an sm_120 build for Blackwell.
+
+# --- notebooks / plotting ---
+jupyterlab>=4.2
+ipykernel>=6.29
+ipywidgets>=8.1          # progress bars in datasets/transformers
+matplotlib>=3.9
+nbformat>=5.10
+
+# --- evaluation (notebook 14) ---
+lm-eval>=0.4.5
+scikit-learn>=1.5
+
+# --- optional, install when you need them ---
+# vllm>=0.6              # 5-10x faster generation; big win for GRPO (notebook 13)
+# wandb                  # experiment tracking; set report_to="wandb"
+# flash-attn             # SDPA already gives you FlashAttention; this is for extra control
+# datasketch             # real MinHash-LSH dedup at scale (notebook 01)
+# hf_transfer            # faster Hub downloads

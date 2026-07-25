@@ -1,0 +1,7 @@
+data/*.bin
+artifacts/*.pt
+artifacts/checkpoints/
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+wandb/
