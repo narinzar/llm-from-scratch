@@ -12,16 +12,67 @@ asks for a cluster.
 
 ## Start here
 
+### 0. Clone onto the Linux filesystem
+
+On WSL2 this is not a style preference. `/mnt/c/...` and `/mnt/d/...` are
+Windows drives reached through the 9p mount, which is **roughly 10× slower** for
+the many-small-files I/O that `pip` and `datasets` do. Notebook 01 writes
+gigabytes; put the repo on the Linux side and it stays fast.
+
 ```bash
-cd llm-from-scratch
+git clone https://github.com/narinzar/llm-from-scratch ~/llm-from-scratch
+cd ~/llm-from-scratch
+pwd     # must NOT start with /mnt/
+```
 
+If you already cloned to a Windows path, move it (`mv /mnt/d/... ~/`), delete
+any `.venv` you built there, and reopen the folder in VS Code with
+**WSL: Open Folder**. A venv records absolute paths, so it does not survive a
+move.
+
+### 1. Create and activate the venv
+
+```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # prompt gains a (.venv) prefix
 python -m pip install -U pip wheel
+```
 
-# PyTorch for Blackwell (sm_120). The --index-url is NOT optional — see SETUP.md
+`source .venv/bin/activate` is the whole activation step, and it has to be
+rerun in **every new terminal**. In VS Code, do it once properly instead:
+**Ctrl+Shift+P → Python: Select Interpreter → `./.venv/bin/python`**. New
+terminals then activate automatically, and Jupyter picks the same environment.
+
+### 2. Install PyTorch first, on its own
+
+```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu128
+```
 
+**The order matters and the `--index-url` is not optional.** `requirements.txt`
+deliberately leaves torch out, but `trl`, `peft` and `lm-eval` all depend on it
+— so if you run `pip install -r requirements.txt` first, pip quietly resolves
+torch from PyPI and hands you a build with **no sm_120 kernels**. Installing it
+first means the requirements step finds torch already satisfied and leaves it
+alone.
+
+Expect this to take a while: torch plus its bundled cuDNN/cuBLAS libraries is a
+**3–5 GB download**, so 10–15 minutes on a normal connection is right. It is not
+hung.
+
+Check the wheel you actually got before going further:
+
+```bash
+python -c "import torch; print(torch.__version__, torch.cuda.get_arch_list())"
+```
+
+`sm_120` must appear in that list. If it doesn't, see
+[SETUP.md](SETUP.md) — you have the wrong wheel, and every notebook past 03
+will fail in the same confusing way.
+
+### 3. Everything else
+
+```bash
 pip install -r requirements.txt
 python -m ipykernel install --user --name llm-fs --display-name "llm-from-scratch"
 
