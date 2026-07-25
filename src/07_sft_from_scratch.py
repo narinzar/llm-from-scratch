@@ -468,6 +468,7 @@ def train_sft(cfg: SFTConfig, examples: list[dict]):
             step += 1
 
     out = Path("../artifacts/checkpoints") / f"{cfg.out_name}.pt"
+    out.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"model": model.state_dict(),
                 "model_config": {**ck["model_config"], "vocab_size": len(tok)},
                 "step": step, "val_loss": running}, out)

@@ -126,13 +126,15 @@ llm-from-scratch/
 ├── notebooks/     <- the course. open these.
 ├── src/           <- jupytext percent-format sources the notebooks are built from
 ├── llmfs/         <- shared model code (the GPT from notebook 03) + bench.py
-├── tools/         <- build_notebooks.py, update_benchmarks.py
+├── tools/         <- build_notebooks.py
 ├── benchmarks/    <- runs.jsonl, the append-only record of every run
 ├── BENCHMARK.md   <- generated results table (see below)
-├── data/          <- generated corpora (.bin, gitignored)
-├── artifacts/     <- tokenizers and checkpoints (gitignored)
 └── SETUP.md       <- Blackwell/WSL2 setup and troubleshooting
 ```
+
+`data/` and `artifacts/` are created on first use and are gitignored — corpora,
+tokenizers and checkpoints are all reproducible from the notebooks, so none of
+it belongs in git.
 
 Notebooks are **generated** from `src/*.py`:
 
@@ -181,8 +183,8 @@ Nothing is automatic beyond that: run a notebook, the table updates. Commit
 `runs.jsonl` and your results travel with the repo.
 
 ```bash
-python tools/update_benchmarks.py           # rebuild the table by hand
-python tools/update_benchmarks.py --check   # exit 1 if it's stale (for CI)
+python -m llmfs.bench            # rebuild the table by hand
+python -m llmfs.bench --check    # exit 1 if it's stale (for CI)
 ```
 
 `runs.jsonl` is append-only and is the source of truth; `BENCHMARK.md` is
