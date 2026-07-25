@@ -4,7 +4,7 @@
      overwritten on the next run. Edit benchmarks/runs.jsonl instead, or
      rerun `python tools/update_benchmarks.py`. -->
 
-**3 runs** recorded across **2 of 14 stages** · updated 2026-07-25 13:54 UTC
+**3 runs** recorded across **2 of 14 stages** · last run 2026-07-25 13:54:05 UTC
 
 Every notebook ends by calling `llmfs.bench.log_run(...)`, which appends to
 [`benchmarks/runs.jsonl`](benchmarks/runs.jsonl) and regenerates this file.

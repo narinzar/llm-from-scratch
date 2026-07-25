@@ -231,7 +231,12 @@ def render(path: Path | None = None) -> str:
     for v in by_stage.values():
         v.sort(key=lambda r: r["when"])
 
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    # Stamp the report with the newest run, not the wall clock. Rendering has to
+    # be a pure function of runs.jsonl or `--check` could never pass: it would
+    # diff a fresh timestamp against the committed one every single time.
+    newest = max((r["when"] for r in runs), default=None)
+    now = (newest.replace("T", " ").replace("Z", " UTC") if newest
+           else "never — no runs yet")
     lines = [
         "# Benchmarks",
         "",
@@ -240,7 +245,7 @@ def render(path: Path | None = None) -> str:
         "     rerun `python tools/update_benchmarks.py`. -->",
         "",
         f"**{len(runs)} run{'s' if len(runs) != 1 else ''}** recorded across "
-        f"**{len(by_stage)} of {len(STAGES)} stages** · updated {now}",
+        f"**{len(by_stage)} of {len(STAGES)} stages** · last run {now}",
         "",
         "Every notebook ends by calling `llmfs.bench.log_run(...)`, which appends to",
         "[`benchmarks/runs.jsonl`](benchmarks/runs.jsonl) and regenerates this file.",
