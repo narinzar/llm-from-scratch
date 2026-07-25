@@ -125,8 +125,10 @@ gradient accumulation.** The math is unchanged.
 llm-from-scratch/
 ├── notebooks/     <- the course. open these.
 ├── src/           <- jupytext percent-format sources the notebooks are built from
-├── llmfs/         <- shared model code (the GPT from notebook 03)
-├── tools/         <- build_notebooks.py
+├── llmfs/         <- shared model code (the GPT from notebook 03) + bench.py
+├── tools/         <- build_notebooks.py, update_benchmarks.py
+├── benchmarks/    <- runs.jsonl, the append-only record of every run
+├── BENCHMARK.md   <- generated results table (see below)
 ├── data/          <- generated corpora (.bin, gitignored)
 ├── artifacts/     <- tokenizers and checkpoints (gitignored)
 └── SETUP.md       <- Blackwell/WSL2 setup and troubleshooting
@@ -142,6 +144,51 @@ python tools/build_notebooks.py 04     # rebuild just notebook 04
 Notebook JSON produces unreadable git diffs, so the reviewable source lives in
 `src/`. If you edit a notebook directly and want to keep the change, mirror it
 into `src/` or your next rebuild will overwrite it.
+
+---
+
+## Tracking your results
+
+Almost every exercise in this course is "change one thing and see what happens" —
+sweep beta, drop the KL term, untie the weights, resize the vocabulary. That only
+teaches you something if you can see the *previous* number next to the new one.
+
+So each notebook ends by recording its results:
+
+```python
+from llmfs.bench import log_run
+
+log_run(
+    stage="10_dpo_from_scratch",
+    metrics={"margin": 2.89, "loss": 0.055, "logp_chosen": -52.9},
+    config={"beta": 0.5, "lr": 1e-5, "steps": 400},
+    notes="beta sweep: 0.1 -> 0.5",
+)
+```
+
+That appends one line to `benchmarks/runs.jsonl` and regenerates
+**[`BENCHMARK.md`](BENCHMARK.md)** — a summary of the latest result per stage
+plus the full history per stage, each row carrying its config, git commit, and
+device. Reruns show a delta against your previous attempt, labelled better or
+worse:
+
+| # | `margin` | `loss` | Config | Notes |
+|---|---|---|---|---|
+| 2 | 2.886 | 0.0545 | `beta=0.5` | beta sweep: 0.1 -> 0.5 |
+| 1 | 0.7249 | 0.3952 | `beta=0.1` | baseline |
+
+Nothing is automatic beyond that: run a notebook, the table updates. Commit
+`runs.jsonl` and your results travel with the repo.
+
+```bash
+python tools/update_benchmarks.py           # rebuild the table by hand
+python tools/update_benchmarks.py --check   # exit 1 if it's stale (for CI)
+```
+
+`runs.jsonl` is append-only and is the source of truth; `BENCHMARK.md` is
+derived and can always be rebuilt from it. Numbers are only comparable within a
+device, which is why the device is part of every row — a 5090 run and a CPU run
+are different experiments.
 
 ---
 

@@ -209,9 +209,11 @@ def useful_fraction(all_rewards: torch.Tensor) -> float:
 torch.manual_seed(0)
 print(f"{'model accuracy':>16}{'useful groups':>16}")
 print("-" * 32)
+useful_curve = {}
 for p in [0.05, 0.2, 0.5, 0.8, 0.95]:
     rewards = (torch.rand(500, 8) < p).float()
-    print(f"{p:>16.0%}{useful_fraction(rewards):>16.1%}")
+    useful_curve[p] = useful_fraction(rewards)
+    print(f"{p:>16.0%}{useful_curve[p]:>16.1%}")
 
 # %% [markdown]
 # The signal peaks when the model is right about half the time, and collapses at
@@ -286,6 +288,7 @@ old = torch.full((B, T), -2.0)
 
 print(f"{'scenario':<44}{'loss':>9}{'kl':>8}{'clipfrac':>10}")
 print("-" * 71)
+probes = {}
 for name, pol_delta, adv in [
     ("no change, positive advantage",   0.0,  torch.tensor([1.0, 1.0, 1.0, 1.0])),
     ("small increase, positive adv",    0.1,  torch.tensor([1.0, 1.0, 1.0, 1.0])),
@@ -295,6 +298,7 @@ for name, pol_delta, adv in [
 ]:
     pol = old + pol_delta
     _, m = grpo_loss(pol, old, old, adv, mask)
+    probes[name] = m
     print(f"{name:<44}{m['loss']:>9.4f}{m['kl']:>8.4f}{m['clip_frac']:>10.2f}")
 
 # %% [markdown]
@@ -502,7 +506,43 @@ print("raises the chance of a correct final answer — nobody asked for it.")
 #
 # All are small edits to what you've written above — which is the point of
 # building it yourself.
+
+# %% [markdown]
+# ## Record this run
 #
+# Nothing here is trained — `grpo_train_step` needs a GPU and lands in notebook
+# 13. What this notebook produces instead is a set of **seeded correctness
+# probes**, and those are worth tracking precisely because they are
+# deterministic: if you implement Dr. GRPO, swap in DAPO's asymmetric clipping,
+# or try the RLOO baseline, these numbers move, and the delta in `BENCHMARK.md`
+# tells you *how* your variant differs from vanilla GRPO.
+#
+# Two invariants to watch. `clip_frac_unchanged` must stay at 0 — if a policy
+# identical to the sampler is getting clipped, the ratio is wrong. And
+# `useful_groups` peaks near 50% accuracy and collapses at both extremes, which
+# is the whole argument for curriculum difficulty.
+
+# %%
+import sys
+
+sys.path.insert(0, "..")          # repo root, so `llmfs` is importable
+from llmfs.bench import log_run
+
+log_run(
+    stage="12_grpo_rlvr_from_scratch",
+    metrics={
+        "useful_groups_at_50pct": useful_curve[0.5],
+        "useful_groups_at_95pct": useful_curve[0.95],
+        "clip_frac_unchanged": probes["no change, positive advantage"]["clip_frac"],
+        "clip_frac_large_update": probes["LARGE increase, positive adv"]["clip_frac"],
+        "kl_large_update": probes["LARGE increase, positive adv"]["kl"],
+    },
+    key="useful_groups_at_50pct",
+    config={"group_size": 8, "eps": 0.2, "n_groups": 500, "seed": 0},
+    notes="seeded probes, vanilla GRPO",
+)
+
+# %% [markdown]
 # ## Exercises
 #
 # 1. **Break the sampler.** Set `temperature=0.0` and confirm all advantages go

@@ -348,6 +348,30 @@ print(f"\nA model with ZERO understanding of content gets {100*acc:.0f}%.")
 print("That is the floor your real reward model must beat to be worth anything.")
 
 # %% [markdown]
+# ## Record this run
+#
+# This records the *length-only baseline*, not a trained reward model — which is
+# exactly what makes it worth keeping. It is the floor. When you do exercise 1
+# and train a real RM, record it under the same stage and `BENCHMARK.md` will put
+# the two rows side by side; if the real model doesn't clearly beat this number
+# it has learned nothing about content.
+
+# %%
+from llmfs.bench import log_run
+
+log_run(
+    stage="09_reward_modeling",
+    metrics={
+        "accuracy": acc,
+        "bt_loss": loss.item(),
+        "length_weight": toy.w.item(),
+    },
+    key="accuracy",
+    config={"model": "length-only baseline", "n_pairs": len(rows), "steps": 400},
+    notes="length-only floor — beat this with a real RM",
+)
+
+# %% [markdown]
 # ### Defences against reward hacking
 #
 # | defence | how |

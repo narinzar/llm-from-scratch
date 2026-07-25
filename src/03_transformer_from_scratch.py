@@ -653,6 +653,33 @@ else:
     print("Only worry if the loss is FLAT or increasing; that means a real bug.")
 
 # %% [markdown]
+# ### Record this run
+#
+# The overfit test is the architecture's smoke alarm: a correct transformer
+# drives a single batch to near-zero loss, a broken one plateaus. Recording it
+# means that when you untie the weights in exercise 2 — or change the init, or
+# the attention mask — you can see at a glance whether the model still learns,
+# and what the change cost in parameters.
+
+# %%
+import sys
+
+sys.path.insert(0, "..")          # repo root, so `llmfs` is importable
+from llmfs.bench import log_run
+
+log_run(
+    stage="03_transformer",
+    metrics={
+        "overfit_loss": l.item(),
+        "n_params": sum(p.numel() for p in tiny.parameters()),
+    },
+    key="overfit_loss",
+    config={"n_layer": small_cfg.n_layer, "n_embd": small_cfg.n_embd,
+            "n_head": small_cfg.n_head, "steps": 400},
+    notes="single-batch overfit test",
+)
+
+# %% [markdown]
 # The shape of that curve matters more than the final number:
 #
 # | what you see | what it means |

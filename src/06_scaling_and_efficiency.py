@@ -237,10 +237,33 @@ if device == "cuda":
     comp = benchmark_step(m, B, T, V, autocast=True, warmup=8)
     print(f"{'+ torch.compile':<34}{comp:>12,.0f}{comp/base:>9.2f}x")
 
-    print(f"\nMFU at best: {100*report_mfu(comp, dict(n_layer=6, n_embd=384, n_head=6, block_size=T, vocab_size=V)):.1f}%")
+    best_cfg = dict(n_layer=6, n_embd=384, n_head=6, block_size=T, vocab_size=V)
+    print(f"\nMFU at best: {100*report_mfu(comp, best_cfg):.1f}%")
+
+    # This is the one benchmark in the course that is purely about your machine,
+    # so it is also the one where a recorded history is most useful: a driver
+    # update, a new PyTorch, or a different batch size all move it.
+    from llmfs.bench import log_run
+
+    log_run(
+        stage="06_scaling_and_efficiency",
+        metrics={
+            "tokens_per_sec": comp,
+            "mfu": report_mfu(comp, best_cfg),
+            "speedup_bf16": amp / base,
+            "speedup_compile": comp / base,
+            "tokens_per_sec_fp32": base,
+        },
+        key="tokens_per_sec",
+        config={"n_layer": 6, "n_embd": 384, "batch": B, "block_size": T,
+                "vocab_size": V},
+        notes="fp32 -> bf16 -> torch.compile",
+    )
 else:
     print("(benchmark requires CUDA — the relative gains are the point,")
     print(" and they don't reproduce meaningfully on CPU)")
+    print("Nothing recorded to BENCHMARK.md: a CPU number here would not be")
+    print("comparable to the GPU runs it would sit next to.")
 
 # %% [markdown]
 # ## Gradient checkpointing

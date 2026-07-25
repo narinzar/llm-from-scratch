@@ -370,11 +370,13 @@ def degeneration_demo(lr: float, beta: float = 0.1, steps: int = 400):
     return trace
 
 
+traces = {}
 for lr in [1e-5, 1e-4]:
     print(f"\n=== lr = {lr:.0e} ===")
     print(f"{'step':>6}{'loss':>9}{'margin':>9}{'logp(chosen)':>15}{'logp(rejected)':>16}")
     print("-" * 55)
-    for s, l, mg, pc, pr in degeneration_demo(lr):
+    traces[lr] = degeneration_demo(lr)
+    for s, l, mg, pc, pr in traces[lr]:
         print(f"{s:>6}{l:>9.4f}{mg:>9.3f}{pc:>15.2f}{pr:>16.2f}")
 
 # %% [markdown]
@@ -433,7 +435,43 @@ for lr in [1e-5, 1e-4]:
 # signal about its own actual failure modes. That's why frontier labs still run
 # online RL despite the cost — and why reasoning models are trained with GRPO,
 # not DPO.
+
+# %% [markdown]
+# ## Record this run
 #
+# The exercises below ask you to change beta and the learning rate. To see
+# whether a change actually helped you need the previous numbers next to the new
+# ones, so the cell below appends this run to `benchmarks/runs.jsonl` and
+# regenerates `BENCHMARK.md` with the delta against your last attempt.
+#
+# `degeneration_drop` is the quantity this notebook exists to teach: how far
+# `logp(chosen)` falls from its peak at the too-high learning rate. Loss and
+# margin both look better the whole time, so this is the only column that shows
+# the failure. Watch it, not the loss.
+
+# %%
+from llmfs.bench import log_run
+
+step, loss, margin, logp_chosen, logp_rejected = traces[1e-5][-1]
+
+# How far logp(chosen) fell from its peak in the lr=1e-4 run.
+peak = max(p for _, _, _, p, _ in traces[1e-4])
+drop = peak - traces[1e-4][-1][3]
+
+log_run(
+    stage="10_dpo_from_scratch",
+    metrics={
+        "margin": margin,
+        "loss": loss,
+        "logp_chosen": logp_chosen,
+        "degeneration_drop": drop,
+    },
+    key="margin",
+    config={"beta": 0.1, "lr": 1e-5, "steps": 400, "n_layer": 2, "n_embd": 64},
+    notes="healthy lr=1e-5; degeneration_drop measured at lr=1e-4",
+)
+
+# %% [markdown]
 # ## Exercises
 #
 # 1. **Beta sweep.** β ∈ {0.01, 0.1, 0.5} on real data. Track margin *and*

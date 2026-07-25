@@ -445,14 +445,15 @@ trainer = trainers.BpeTrainer(
 
 t0 = time.time()
 hf_tok.train_from_iterator([corpus], trainer)
-print(f"HF trained in {time.time()-t0:.1f}s (ours took much longer for the same job)")
+hf_train_seconds = time.time() - t0
+print(f"HF trained in {hf_train_seconds:.1f}s (ours took much longer for the same job)")
 
 enc = hf_tok.encode("Once upon a time there was a little girl.")
 print(f"\nids:    {enc.ids}")
 print(f"tokens: {enc.tokens}")
 print(f"decode: {hf_tok.decode(enc.ids)!r}")
-print(f"\ncompression on held-out: "
-      f"{len(held_out.encode())/len(hf_tok.encode(held_out).ids):.2f} bytes/token")
+hf_compression = len(held_out.encode()) / len(hf_tok.encode(held_out).ids)
+print(f"\ncompression on held-out: {hf_compression:.2f} bytes/token")
 
 # %% [markdown]
 # ### Those special tokens
@@ -476,6 +477,34 @@ out_dir = Path("../artifacts")
 out_dir.mkdir(parents=True, exist_ok=True)
 hf_tok.save(str(out_dir / "tokenizer_tinystories_2k.json"))
 print(f"saved -> {(out_dir / 'tokenizer_tinystories_2k.json').resolve()}")
+
+# %% [markdown]
+# ## Record this run
+#
+# Compression — bytes per token on held-out text — is the number that matters
+# for a tokenizer, because it sets how much text fits in your context window and
+# how many tokens each training step consumes. Exercise 2 asks you to retrain on
+# code; record that run under the same stage and `BENCHMARK.md` will show you
+# exactly what a domain-specific vocabulary buys you.
+
+# %%
+import sys
+
+sys.path.insert(0, "..")          # repo root, so `llmfs` is importable
+from llmfs.bench import log_run
+
+log_run(
+    stage="02_tokenizer",
+    metrics={
+        "compression": hf_compression,
+        "train_seconds": hf_train_seconds,
+        "vocab_size": hf_tok.get_vocab_size(),
+    },
+    key="compression",
+    config={"corpus": "TinyStories", "vocab_size": 2000,
+            "corpus_chars": len(corpus)},
+    notes="HF tokenizers BPE, byte-level",
+)
 
 # %% [markdown]
 # ## Exercises
