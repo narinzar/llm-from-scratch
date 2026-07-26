@@ -59,9 +59,23 @@ passthrough — a common and frustrating self-inflicted wound.
 **Check it works:** `nvidia-smi` inside WSL should list your 5090 with no extra
 installation. If it doesn't, update the Windows driver first.
 
-**Filesystem.** Keep this repo on the Linux filesystem (`~/code/...`), never
-`/mnt/c/...`. Dataset and checkpoint I/O across the 9p mount is roughly 10×
-slower, and notebook 01 writes gigabytes.
+**Filesystem.** Keep this repo on the Linux filesystem (`~/llm-from-scratch`),
+never `/mnt/c/...` or `/mnt/d/...`. Dataset and checkpoint I/O across the 9p
+mount is roughly 10× slower, and notebook 01 writes gigabytes.
+
+**VS Code has to be attached to WSL, not merely installed alongside it.** Open
+the folder by running `code .` from a WSL bash shell. *File → Open Folder* is a
+native Windows dialog, so using it — even to browse `\\wsl$\...` — drops the
+window back into Windows mode, where the terminal offers PowerShell and every
+path becomes a 9p path. If your terminal profile list includes PowerShell, you
+are in the wrong window. Correct state: `WSL: Ubuntu-22.04` in the bottom-left
+status bar, `bash` terminal, and `pwd` printing `/home/<you>/...`.
+
+**Keep the venv inside the project** (`~/llm-from-scratch/.venv`) rather than in
+your home directory. It is `.gitignore`d, it is obvious which project it belongs
+to, and `rm -rf .venv` is then a safe, local reset. A venv also hard-codes
+absolute paths, so if you ever move the project, delete and recreate it — moving
+it leaves a broken interpreter with confusing import errors.
 
 **Memory.** WSL2 defaults can be stingy. In `C:\Users\<you>\.wslconfig`:
 

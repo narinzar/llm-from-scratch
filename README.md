@@ -19,16 +19,48 @@ Windows drives reached through the 9p mount, which is **roughly 10× slower** fo
 the many-small-files I/O that `pip` and `datasets` do. Notebook 01 writes
 gigabytes; put the repo on the Linux side and it stays fast.
 
+From a **WSL bash** shell (Windows Terminal → Ubuntu, or `wsl` from PowerShell):
+
 ```bash
 git clone https://github.com/narinzar/llm-from-scratch ~/llm-from-scratch
 cd ~/llm-from-scratch
-pwd     # must NOT start with /mnt/
+pwd            # must print /home/<you>/... and NOT start with /mnt/
 ```
 
-If you already cloned to a Windows path, move it (`mv /mnt/d/... ~/`), delete
-any `.venv` you built there, and reopen the folder in VS Code with
-**WSL: Open Folder**. A venv records absolute paths, so it does not survive a
-move.
+Already cloned to a Windows path? Move it rather than re-cloning, then throw
+away the venv — a venv hard-codes absolute paths and never survives a move:
+
+```bash
+mv /mnt/d/vscode_projects/llm-from-scratch ~/ && cd ~/llm-from-scratch && rm -rf .venv
+```
+
+### 0b. Open VS Code *in* WSL, not next to it
+
+This is the step that trips people up, and it silently costs you the 10× above.
+
+**Launch VS Code from the bash shell you just used:**
+
+```bash
+cd ~/llm-from-scratch && code .
+```
+
+That opens a window already attached to WSL, pointed at the Linux path. Do **not**
+use *File → Open Folder* to get there: that dialog is native Windows, so browsing
+to `\\wsl$\...` or picking a `D:\` folder drops the window back into Windows mode.
+Once a window is correct, *File → Open Recent* remembers it — a good entry looks
+like `llm-from-scratch [WSL: Ubuntu-22.04]`.
+
+Three checks that you're in the right place:
+
+| Check | Right | Wrong |
+|---|---|---|
+| Status bar, bottom-left | `WSL: Ubuntu-22.04` **and** files in Explorer | no WSL badge, or badge with an empty Explorer |
+| Terminal profile | `bash` | `powershell` / `pwsh` |
+| `pwd` in the terminal | `/home/<you>/llm-from-scratch` | `/mnt/d/...` or `D:\...` |
+
+If the terminal offers you PowerShell at all, that window is not in WSL — reopen
+with `code .` from bash. Everything below assumes **bash inside WSL**; PowerShell
+would build a Windows venv your Linux notebooks cannot use.
 
 ### 1. Create and activate the venv
 
