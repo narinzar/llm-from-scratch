@@ -297,18 +297,46 @@ print(f"A vs C  true={jaccard(shingles(doc_a), shingles(doc_c)):.3f}  "
 # which is cheap and catches the common case.
 
 # %% [markdown]
-# ## Building the corpus: stream → filter → dedup → tokenize → `.bin`
+# ## First: what is a token?
 #
-# The output format is deliberately dumb: **one flat array of `uint16` token
-# ids**, documents separated by an end-of-text token. That's it. No JSON, no
-# per-example padding, no `__getitem__`. Training samples a random offset and
-# slices `block_size + 1` tokens.
+# This word is about to appear in every cell for the rest of the course, so it
+# is worth ten lines now.
 #
-# `uint16` works because GPT-2's vocab is 50257 < 65536. For a larger vocab
-# you'd need `uint32` and 2× the disk.
+# A neural network cannot read text. It multiplies matrices of numbers. So
+# before any model sees your corpus, the text has to become a list of integers.
+# A **token** is one of those integers — and, equivalently, the chunk of text it
+# stands for.
 #
-# We use the GPT-2 tokenizer here so this notebook stands alone; notebook 02
-# builds a tokenizer from scratch and you can rerun this with your own.
+# The obvious choices are both bad:
+#
+# - **One token per character.** Vocabulary of ~100, but sequences become
+#   enormous. "understanding" is 13 steps of computation instead of 1–2, and
+#   attention cost grows with the *square* of sequence length.
+# - **One token per word.** Short sequences, but the vocabulary is unbounded —
+#   every typo, name, and inflection is a new word — and anything unseen at
+#   training time becomes `<UNK>`, which destroys information.
+#
+# **Byte-Pair Encoding (BPE)** splits the difference. Start from bytes, then
+# repeatedly merge the most frequent adjacent pair into a new token. Common
+# words end up as a single token; rare words survive as a handful of pieces;
+# nothing is ever unrepresentable, because you can always fall back to bytes.
+#
+# So a token is usually *a common word or a word-fragment*, and the useful rule
+# of thumb for English is:
+#
+# > **1 token ≈ 4 characters ≈ 0.75 words.**
+# > 1,000 tokens is roughly 750 words, or about a page and a half.
+#
+# Two consequences that will bite you later if you don't internalize them now:
+#
+# - Token counts, not word counts, are what fills a context window, what you pay
+#   for on an API, and what `block_size` measures.
+# - The **leading space is part of the token**. `" the"` and `"the"` are
+#   *different* ids. This is why a prompt should never end with a trailing space
+#   — you hand the model a token it almost never saw during training. Notebook
+#   02 builds a tokenizer from scratch and makes this concrete.
+#
+# The cell below loads GPT-2's tokenizer and shows all of that on real text.
 
 # %%
 from transformers import AutoTokenizer
@@ -316,6 +344,70 @@ from transformers import AutoTokenizer
 tok = AutoTokenizer.from_pretrained("gpt2")
 EOT = tok.eos_token_id  # 50256, the document separator
 print(f"vocab size {tok.vocab_size}, eot id {EOT}")
+
+# See it happen. Note the Ġ — that is how GPT-2 draws a leading space.
+demo = "The cat sat on the mat. Antidisestablishmentarianism!"
+ids = tok.encode(demo)
+print(f"\ntext      : {demo!r}")
+print(f"ids       : {ids}")
+print(f"pieces    : {tok.convert_ids_to_tokens(ids)}")
+print(f"\n{len(demo)} chars -> {len(ids)} tokens "
+      f"({len(demo)/len(ids):.2f} chars/token)")
+
+# Common words are one token; rare long words shatter into pieces.
+for w in ["the", " the", "cat", "Antidisestablishmentarianism", "1234567"]:
+    print(f"  {w!r:<32} -> {len(tok.encode(w))} token(s) {tok.encode(w)}")
+
+# %% [markdown]
+# Read that output carefully — three things are visible in it.
+#
+# **`" the"` and `"the"` have different ids.** Same letters, different token,
+# because the space is baked in.
+#
+# **`Antidisestablishmentarianism` costs 5–8 tokens** while `the` costs 1. The
+# tokenizer spends its vocabulary budget on what is *frequent*, not on what is
+# long. This is also why tokenizers are bad at arithmetic: `1234567` splits into
+# arbitrary chunks that carry no numeric meaning, which is a real cause of
+# digit-level mistakes in LLMs. Llama 3 changed its tokenizer to split every
+# digit separately for exactly this reason.
+#
+# **The chars/token ratio lands near 4.** That is the compression number
+# notebook 02 measures properly, and it directly sets how much text fits in your
+# context window.
+#
+# ## Building the corpus: stream → filter → dedup → tokenize → `.bin`
+#
+# Now we turn a whole dataset into tokens. The output format is deliberately
+# dumb: **one flat array of `uint16` token ids**, documents separated by an
+# end-of-text token. That's it. No JSON, no per-example padding, no
+# `__getitem__`. Training samples a random offset and slices `block_size + 1`
+# tokens.
+#
+# It helps to picture the file as one unbroken ribbon of numbers:
+#
+# ```
+# [   464  3797  3332 ... 13 50256   818  1110 ... 50256  ... ]
+#  \________ document 1 _______/ ^     \____ document 2 ____/ ^
+#                                |                            |
+#                          EOT (50256)                   EOT (50256)
+# ```
+#
+# **Why one flat array instead of a list of documents?** Because training wants
+# fixed-length windows, and a flat array gives them for free: pick a random
+# offset `i`, slice `tokens[i : i + block_size + 1]`, done. No padding, no
+# bucketing, no wasted compute on `<PAD>`. Windows occasionally straddle the EOT
+# boundary and contain the tail of one document plus the head of the next — that
+# is fine and even useful, since it teaches the model that EOT means "the topic
+# is about to change completely."
+#
+# **Why `uint16`?** Two bytes per token, and GPT-2's vocabulary is
+# 50257 < 65536, so every id fits. That keeps 500M tokens at 1 GB instead of 2 GB
+# under `uint32`. If you ever use a vocabulary larger than 65536 — Llama 3's is
+# 128k — this silently wraps around and corrupts your data, so you must switch to
+# `uint32` and pay double the disk.
+#
+# We use the GPT-2 tokenizer here so this notebook stands alone; notebook 02
+# builds a tokenizer from scratch and you can rerun this with your own.
 
 
 def build_bin(
@@ -392,6 +484,49 @@ def build_bin(
 #
 # Note we skip the prose filter — TinyStories are short by design and the
 # `min_words` rule would reject most of them.
+#
+# **What you should see.** Progress lines every 25,000 documents, then a stats
+# dictionary. Expect roughly:
+#
+# ```
+#   25000 docs |    5.6M tokens
+#   50000 docs |   11.1M tokens
+#   75000 docs |   16.6M tokens
+#
+#  {'kept': 91158, 'empty': 12, 'drop_exact_dup': 950, 'total_tokens': 20000043}
+# ```
+#
+# Takes 20–40 s and writes a **40 MB** file. Your numbers will differ by a few
+# percent — streaming order is not guaranteed stable — but the *shape* should
+# match. Here is how to read every field:
+#
+# | Field | Meaning | Healthy value here |
+# |---|---|---|
+# | `kept` | documents tokenized and written | ~91k |
+# | `empty` | documents with no `text` field | a handful |
+# | `drop_exact_dup` | byte-identical repeats caught by the SHA-1 set | ~1% |
+# | `total_tokens` | tokens written, the number that matters | ≥ target |
+#
+# Three sanity checks worth doing every single time you build a corpus:
+#
+# **1. `total_tokens` slightly exceeds your target.** We requested 20,000,000 and
+# got 20,000,043. The loop only checks the budget *between* documents, so it
+# overshoots by at most one document. Wildly over means your break condition is
+# broken; wildly under means the stream ran dry.
+#
+# **2. Tokens per document ≈ 220.** `20.0M / 91k ≈ 220 tokens`, about 165 words —
+# exactly right for a children's story. If this came out at 5 you are tokenizing
+# empty strings; if it came out at 5,000 you are reading the wrong field and
+# probably concatenated the whole split into one row.
+#
+# **3. File size ≈ 2 bytes × tokens.** 20M tokens → ~40 MB, because `uint16`.
+# If the file is 80 MB, something upcast to `uint32` and you are wasting half
+# your disk. If it is 40 KB, the buffer never flushed.
+#
+# The `drop_exact_dup` count deserves a second look: ~950 out of ~92k documents
+# are **byte-identical duplicates** in a *curated synthetic* dataset. Real web
+# scrapes are far worse. That is the argument for the dedup section above, made
+# with a number instead of an assertion.
 
 # %%
 tiny_path = DATA / "tinystories_train.bin"
@@ -406,6 +541,21 @@ else:
         dedup=True,
     )
     print("\n", s)
+
+# %% [markdown]
+# Now prove the file is what we think it is, rather than trusting the stats.
+
+# %%
+arr = np.memmap(tiny_path, dtype=np.uint16, mode="r")
+print(f"tokens on disk : {len(arr):,}")
+print(f"file size      : {tiny_path.stat().st_size/1e6:.1f} MB "
+      f"({tiny_path.stat().st_size / len(arr):.0f} bytes/token)")
+print(f"id range       : {arr.min()}–{arr.max()}  (must be < {tok.vocab_size})")
+print(f"docs (EOT count): {int((arr == EOT).sum()):,}")
+print(f"mean tokens/doc : {len(arr) / max(1, int((arr == EOT).sum())):.0f}")
+
+print("\n--- first 300 tokens decoded ---")
+print(tok.decode(arr[:300].tolist()))
 
 # %% [markdown]
 # ### Build 2 — FineWeb-Edu (the real corpus)
