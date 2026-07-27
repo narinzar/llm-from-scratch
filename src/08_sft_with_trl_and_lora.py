@@ -444,16 +444,180 @@ QUESTIONS = [
 # fool yourself that it's bigger than it is.
 
 # %% [markdown]
-# ## Part 5 — LoRA variants worth knowing
+# ## Part 5 — The whole PEFT family, and how to tell them apart
 #
-# | variant | idea | when to use |
+# You will see infographics listing five or ten fine-tuning "techniques" as if
+# they were unrelated inventions. They are not. Almost all of them are the same
+# idea — *freeze the base model, train something small* — differing only in
+# **what** the small thing is and **where** it sits.
+#
+# Here is the family, with the one sentence that distinguishes each:
+#
+# | technique | what is trainable | trainable params (7B) | when it wins |
+# |---|---|---|---|
+# | **Full fine-tuning** | every weight | 7B (100%) | you have the VRAM and lots of data |
+# | **LoRA** | two low-rank matrices `A`, `B` per target layer | ~20M (0.3%) | **the default** — behaviour adaptation |
+# | **LoRA-FA** | only `B`; `A` stays at its random init | ~10M (0.15%) | halves optimizer state; small quality cost |
+# | **QLoRA** | same as LoRA, but base is 4-bit | ~20M (0.3%) | model won't fit in VRAM otherwise |
+# | **DoRA** | LoRA + a per-column magnitude vector | ~21M (0.3%) | low ranks (r ≤ 8); closes much of the gap to full FT |
+# | **rsLoRA** | LoRA with `alpha/√r` scaling | ~20M | you want rank ≥ 64 to actually help |
+# | **PiSSA** | LoRA initialized from the SVD of `W` | ~20M | faster early convergence |
+# | **VeRA / "TinyLoRA"** | one scaling vector; `A`,`B` frozen *and shared* | ~0.1M (0.001%) | serving thousands of per-user adapters |
+# | **IA³** | three scaling vectors per block (k, v, ffn) | ~0.5M | extreme parameter thrift |
+# | **Prompt / prefix tuning** | virtual tokens prepended to the input | ~0.1M | multi-task serving off one frozen base |
+#
+# **Read that table structurally, not as a menu.** Going down it, you are trading
+# *capacity* for *cost*. LoRA already gets you to 0.3%; everything below it is
+# fighting for the last fraction of a percent, and pays in quality. Those
+# "13 parameters for a 70B model" claims you see shared around are real numbers
+# for VeRA-style methods, but they buy you a *very* constrained update — fine for
+# swapping user styles, useless for teaching a new skill.
+#
+# The practical shape of it:
+#
+# - **Start with LoRA.** `r=16`, target the attention projections.
+# - **Use QLoRA** only when the model does not otherwise fit. 4-bit costs you a
+#   little quality and some speed; it is a memory fix, not an upgrade.
+# - **Try DoRA** if you are stuck at low rank.
+# - **Reach for VeRA/IA³/prefix tuning** only when serving many adapters is the
+#   actual problem you have.
+#
+# Let's see the parameter counts for real rather than trusting a table.
+
+# %%
+def peft_param_counts(d_model=4096, n_layers=32, r=16, n_targets=4):
+    """Trainable parameters per method for a ~7B-class model.
+
+    n_targets = how many projections per layer get an adapter (q,k,v,o).
+    Adapters go on the attention projections only, but "full fine-tuning"
+    must count the WHOLE model -- attention (4d^2) plus the MLP, which with
+    SwiGLU at d_ff ~ (8/3)d is about 8d^2 and holds most of the parameters.
+    Comparing adapters against attention alone would flatter them ~3x.
+    Deliberately arithmetic only -- the point is that these are just shapes.
+    """
+    attn_per_layer = 4 * d_model * d_model
+    mlp_per_layer = 8 * d_model * d_model
+    full = (attn_per_layer + mlp_per_layer) * n_layers
+
+    lora = n_layers * n_targets * (d_model * r + r * d_model)   # A and B
+    lora_fa = n_layers * n_targets * (r * d_model)              # B only
+    dora = lora + n_layers * n_targets * d_model                # + magnitude vec
+    vera = n_layers * n_targets * (r + d_model)                 # scaling vecs only
+    ia3 = n_layers * 3 * d_model                                # 3 vectors/block
+
+    return {
+        "full fine-tuning": full,
+        "LoRA (r=%d)" % r: lora,
+        "LoRA-FA": lora_fa,
+        "QLoRA (r=%d)" % r: lora,        # same trainables; base is quantized
+        "DoRA": dora,
+        "VeRA / TinyLoRA": vera,
+        "IA3": ia3,
+    }
+
+
+counts = peft_param_counts()
+base = counts["full fine-tuning"]
+print(f"{'method':<22}{'trainable':>14}{'% of full':>11}{'Adam state':>12}")
+print("-" * 59)
+for name, n in counts.items():
+    # 16 bytes/param for full (bf16 + fp32 master + 2 moments); frozen base is
+    # 2 bytes/param and carries no optimizer state at all.
+    print(f"{name:<22}{n:>14,}{100*n/base:>10.3f}%{n*16/1e9:>11.2f} GB")
+
+print("\nThe frozen base costs the same in every PEFT row -- what changes")
+print("is the optimizer state, which is where full fine-tuning's memory goes.")
+
+# %% [markdown]
+# Notice what the last column shows: the methods differ by *orders of magnitude*
+# in optimizer state, and that is the entire reason they exist. Quality
+# differences between them are, by comparison, small — usually a few percent on a
+# task metric. **Which means you cannot tell them apart by eyeballing outputs.**
+#
+# ## How to actually evaluate whether they differ
+#
+# This is the part the infographics never cover, and it is the part that matters.
+# A fair comparison has four rules.
+#
+# **1. Change exactly one thing.** Same data, same order, same seed, same number
+# of optimizer steps, same max sequence length, same eval set. If you compare
+# LoRA at `lr=2e-4` against full fine-tuning at `lr=2e-5`, you have measured the
+# learning rates, not the methods.
+#
+# **2. Decide what "equal" means — and say which you chose.** There are two
+# defensible budgets and they can rank methods differently:
+#
+# | budget | question it answers | how to hold it fixed |
 # |---|---|---|
-# | **DoRA** | decompose into magnitude + direction, adapt separately | small quality gain over LoRA at low rank; `use_dora=True` |
-# | **rsLoRA** | scale by `alpha/sqrt(r)` instead of `alpha/r` | makes high ranks (64+) actually work; `use_rslora=True` |
-# | **LoRA+** | different LR for A and B (B higher) | faster convergence |
-# | **PiSSA** | init A,B from the SVD of W instead of random/zero | faster early progress |
+# | **equal steps** | which method learns more per update? | same `max_steps` |
+# | **equal wall-clock** | which method is better use of my GPU-hour? | same minutes of training |
 #
-# All are one flag in `LoraConfig`. Start plain; reach for these if you plateau.
+# QLoRA usually loses on equal-wall-clock (4-bit dequantization is slow) while
+# tying on equal-steps. Report which one you used, or the comparison is
+# unreadable.
+#
+# **3. Measure three axes, not one.** A method that is 1% better on your task
+# metric and uses 3× the VRAM has not won:
+#
+# | axis | metric | where it comes from |
+# |---|---|---|
+# | **quality** | held-out loss; task accuracy; win-rate vs the base model | notebook 14 |
+# | **cost** | peak VRAM, tokens/sec, wall-clock to target loss | `torch.cuda.max_memory_allocated()`, notebook 06 |
+# | **retention** | did it get worse at things you did not train on? | eval the *base* capabilities too |
+#
+# That third axis is the one people skip. Fine-tuning on a narrow dataset
+# reliably degrades unrelated abilities — **catastrophic forgetting** — and LoRA
+# forgets *less* than full fine-tuning precisely because it can change less. If
+# you only measure your target task, you will conclude full FT won and ship a
+# model that got worse everywhere else.
+#
+# **4. Check the difference is real before believing it.** Two runs of the *same*
+# method with different seeds will differ. If LoRA scores 71.2% and DoRA scores
+# 72.1%, that gap is almost certainly noise on a 500-example eval set. Notebook
+# 14 derives the arithmetic — but the short version is that with ~500 examples
+# your 95% confidence interval is roughly **±4 points**, so differences under
+# that are not differences.
+#
+# The honest experiment is: **3 seeds per method, report mean ± std**, and only
+# claim a winner when the intervals do not overlap.
+#
+# ### Record it so the comparison survives
+#
+# This is exactly what `BENCHMARK.md` is for. Run each variant and log it under
+# the same stage, and the table will line them up with deltas:
+#
+# ```python
+# from llmfs.bench import log_run
+#
+# log_run(
+#     stage="08_sft_with_trl_and_lora",
+#     metrics={
+#         "eval_loss": 1.412,
+#         "peak_vram_gb": 6.2,
+#         "tokens_per_sec": 4100,
+#         "trainable_params": 20_971_520,
+#     },
+#     key="eval_loss",
+#     config={"method": "LoRA", "r": 16, "lr": 2e-4, "steps": 500, "seed": 0},
+#     notes="baseline; equal-steps budget",
+# )
+# ```
+#
+# Then rerun with `method="DoRA"` or `r=64` and read the delta. That is the whole
+# workflow: one variable, three axes, three seeds, recorded.
+#
+# ### The variant flags, for reference
+#
+# All of these are one argument in `LoraConfig` — you do not implement them:
+#
+# | variant | flag |
+# |---|---|
+# | **DoRA** | `use_dora=True` |
+# | **rsLoRA** | `use_rslora=True` |
+# | **PiSSA** | `init_lora_weights="pissa"` |
+# | **LoRA+** | separate LR for `B` (via the optimizer, not `LoraConfig`) |
+#
+# Start plain; reach for these if you plateau.
 #
 # ## When does LoRA lose to full fine-tuning?
 #
