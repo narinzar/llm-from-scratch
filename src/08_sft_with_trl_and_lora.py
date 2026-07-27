@@ -7,11 +7,61 @@
 #
 # **Time:** 60–90 min including a real training run.
 #
+# ## First, the restaurant
+#
+# Before any of the mechanics, here is the picture to keep in your head for the
+# rest of the course.
+#
+# **You are opening an Italian restaurant.** You hire a chef who trained for
+# fifteen years in Italy. They know everything — every sauce, every pasta shape,
+# every technique. What they do *not* know is *your* restaurant: your menu, your
+# plating, your house style, the way you want the carbonara done.
+#
+# You have two options. You could send them back to culinary school for another
+# fifteen years to retrain them around your menu — absurdly expensive, and they
+# would probably forget half of what made them good. Or you could hand them your
+# recipe cards and let them adapt what they already know.
+#
+# **That second thing is fine-tuning.** And every stage of this course is a step
+# in that same restaurant:
+#
+# | stage | restaurant | notebook |
+# |---|---|---|
+# | **Pretraining** | the fifteen years in Italy — learning to cook, at enormous cost, once | 04 |
+# | **SFT** | teaching your menu: here is how *we* plate it, here is our house style | 07, 08 |
+# | **Reward model** | hiring a food critic who scores any dish you put in front of them | 09 |
+# | **DPO** | showing the chef pairs of dishes — "diners preferred this one" | 10, 11 |
+# | **GRPO / RLVR** | the dish either passes health inspection or it doesn't; no opinion involved | 12, 13 |
+# | **Evaluation** | actually surveying your diners instead of asking the chef how it went | 14 |
+# | **Quantization** | cheaper cookware — very slightly worse results, a fraction of the cost | 15 |
+#
+# The techniques in *this* notebook are about **how much of the kitchen you are
+# allowed to remodel**:
+#
+# - **Full fine-tuning** — rebuild the entire kitchen around your menu. Total
+#   freedom, ruinous cost, and the chef may genuinely forget how to make the
+#   classics. (That last part is not a joke; it is called catastrophic
+#   forgetting, and it is measurable.)
+# - **LoRA** — leave the kitchen exactly as it is and clip a small set of recipe
+#   cards next to each station. The chef reads their training *and* your card,
+#   and cooks accordingly. Cheap, reversible, and you can swap the cards out per
+#   customer.
+# - **QLoRA** — the same recipe cards, but you have also compressed the pantry so
+#   it fits in a smaller kitchen. Slightly lower fidelity ingredients, but now the
+#   restaurant fits in the space you actually have.
+#
+# The reason this analogy earns its place: it predicts the failure modes
+# correctly. Ask *why* LoRA is bad at teaching new knowledge and the answer falls
+# out — a recipe card can tell a trained chef how you want things done, but it
+# cannot teach someone who has never cooked. Ask why LoRA forgets less than full
+# fine-tuning, and it is because you never touched the original training.
+#
 # ## Why we switch models here
 #
-# Notebook 07's 124M model can learn *format* but has no knowledge to draw on.
-# To build something actually useful you fine-tune a strong base model. But full
-# fine-tuning even a 7B model needs ~112 GB (recall notebook 00's table).
+# Notebook 07's 124M model can learn *format* but has no knowledge to draw on —
+# it is a chef who never went to Italy. To build something actually useful you
+# fine-tune a strong base model. But full fine-tuning even a 7B model needs
+# ~112 GB (recall notebook 00's table).
 #
 # **LoRA** and **QLoRA** are how that becomes possible on one consumer GPU.
 

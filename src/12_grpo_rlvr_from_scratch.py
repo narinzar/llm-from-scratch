@@ -8,6 +8,26 @@
 #
 # ## The idea that changed post-training
 #
+# **The restaurant, one last time.** In notebook 09 you trained a food critic,
+# and the chef learned to game them. In notebook 10 you skipped the critic and
+# learned directly from diners' preferences — better, but still bounded by
+# opinion, and still only about dishes someone already tasted.
+#
+# Now imagine a different kind of feedback entirely: **the health inspection.**
+# The kitchen either passes or it fails. There is no taste, no preference, no
+# critic to charm — just a check that either succeeds or doesn't. You cannot
+# sweet-talk a thermometer.
+#
+# That is RLVR. And notice what changes: the chef can now *practise*. Cook a
+# dish, check it, adjust, cook again — thousands of times, with no diner and no
+# critic in the loop, because the verification is free and objective. That is why
+# this technique produced reasoning models: for maths and code, correctness is
+# checkable, so the model can generate its own attempts and learn from which
+# ones actually worked.
+#
+# The catch, which you will see in the code: it only works where a verifier
+# exists. There is no health inspection for "write me a moving poem."
+#
 # Notebook 09 showed the core problem with learned reward models: they get
 # hacked. The policy finds inputs where the proxy is high and quality isn't.
 #

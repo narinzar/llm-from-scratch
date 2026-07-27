@@ -8,6 +8,25 @@
 #
 # ## The problem DPO solves
 #
+# **The restaurant again.** Notebook 09 trained a food critic from diners'
+# comparisons, and the plan was: chef cooks, critic scores, chef adjusts. It
+# works, but look at what you are running — a chef, a critic, a copy of the
+# original chef to make sure nobody drifts too far, and a manager tracking
+# whether things are improving. Four people in the kitchen, and the chef is
+# cooking new dishes constantly just to get scored.
+#
+# **DPO asks: why hire the critic at all?** You already have the diners'
+# comparisons — the pairs of plates where someone said "this one." Train the chef
+# on those directly. No critic, no scoring loop, no new dishes required. You are
+# not learning a proxy for taste and then optimizing the proxy; you are learning
+# from the preferences themselves.
+#
+# That is the entire trick, and the maths below shows *why* it works: the critic
+# turns out to be implicit in the chef. What you lose is that the chef only ever
+# learns from dishes someone already tasted — which is exactly the ceiling
+# discussed at the end of this notebook, and why notebook 12 goes back to
+# on-policy training.
+#
 # Classic RLHF is a three-stage pipeline, and stage 3 is genuinely painful:
 #
 # ```

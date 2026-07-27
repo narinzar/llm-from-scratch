@@ -9,6 +9,26 @@
 #
 # ## Why preferences instead of labels
 #
+# **Back to the restaurant** (notebook 08). Your chef now cooks your menu. But
+# how do you make the food *better*? You cannot hand them a recipe for "the ideal
+# carbonara" — nobody can write that down. What you *can* do is put two plates in
+# front of a diner and ask which they prefer. That is trivially easy, and people
+# are consistent at it even when they cannot articulate why.
+#
+# A **reward model is a food critic you train from those comparisons.** Show it
+# enough "diners preferred A over B" and it learns to score any dish you put in
+# front of it — including dishes no diner has ever tasted. That is the whole
+# point: you cannot ask a human about every possible response, but you *can* ask
+# a model that learned from a few thousand human comparisons.
+#
+# And it predicts this notebook's punchline too. A critic trained on limited
+# comparisons develops quirks — maybe it learned that bigger portions scored
+# better, so now it rates *everything* large as excellent. The chef, cooking to
+# please the critic, starts serving enormous mediocre plates. That is **reward
+# hacking**, and you will measure it yourself further down.
+#
+# Now the technical version of the same argument.
+#
 # SFT teaches the model to imitate good answers. But "good" is hard to write
 # down. Ask a human to *write* the ideal response to "explain quantum computing"
 # and you'll get something slow, expensive, and inconsistent.
