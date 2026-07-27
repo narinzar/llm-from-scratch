@@ -165,6 +165,15 @@ print(repr(format_chatml(convo[:2], add_generation_prompt=True)))
 # This is the part that distinguishes SFT from plain pretraining, and the part
 # most commonly implemented wrong.
 #
+# **The kitchen version** (notebook 08's analogy, arriving early). You are
+# training your chef using tickets from past service. Each ticket has two halves:
+# what the customer *ordered*, and what the chef *sent out*. You want the chef to
+# get better at cooking — you emphatically do not want them getting better at
+# *inventing customer orders*. So when you review the tickets, you cover up the
+# order half and grade only the cooking.
+#
+# That is loss masking. Same ticket, half of it graded.
+#
 # **Train on the assistant's tokens only.** The user's question is *given*, not
 # something the model should learn to produce. If you compute loss over the
 # whole sequence, you're teaching the model to generate plausible user questions
@@ -173,6 +182,31 @@ print(repr(format_chatml(convo[:2], add_generation_prompt=True)))
 # The mechanism: set masked positions to **`-100`** in the labels.
 # `F.cross_entropy` has `ignore_index=-100` by default, so those positions
 # contribute nothing to the loss and nothing to the gradient.
+#
+# Note what masking does *not* mean. The masked tokens are still **fed to the
+# model** — the chef absolutely reads the order, or they'd have no idea what to
+# cook. They are in `input_ids` and attention attends to them normally. They are
+# only excluded from the *scoring*. Input and supervision are different things,
+# and conflating them is the single most common SFT bug:
+#
+# ```
+# input_ids : <|im_start|>user\n What is 2+2? <|im_end|> <|im_start|>assistant\n It is 4. <|im_end|>
+# labels    :  -100 -100 -100  -100 -100 -100  -100      -100 -100 -100         It is 4. <|im_end|>
+#             \________________ fed in, not graded _______________/  \___ fed in AND graded ___/
+# ```
+#
+# **How to know you got it right.** Two checks, both worth doing every time:
+#
+# | check | healthy | what it means if wrong |
+# |---|---|---|
+# | fraction of labels that are `-100` | **60–80%** | 0% = no masking at all; ~100% = you masked everything and loss will be `nan` |
+# | decoded unmasked tokens | only assistant text | if you see the user's words, your header offsets are off by a token |
+#
+# That second check is the one that saves you. Decode the positions where
+# `labels != -100` and *read them*. They should be exactly what you want the
+# model to say, and nothing else. A one-token offset here trains the model to
+# emit `<|im_start|>` at the wrong moment and produces the classic "model talks
+# to itself forever" failure — the cell after next prints this so you can see it.
 
 # %%
 def build_sft_example(messages: list[dict], max_len: int = 512) -> dict:

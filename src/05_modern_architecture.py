@@ -20,6 +20,51 @@
 #
 # None is revolutionary. Together they're worth a meaningful chunk of quality
 # and a large chunk of inference efficiency.
+#
+# ### The one-line intuition for each
+#
+# Before the maths, here is what each change is *for*. Come back to this after
+# you have implemented them and it should read as obvious.
+#
+# **RoPE — "position as a rotation, not a lookup."** GPT-2 learned a separate
+# vector for position 0, 1, 2, … up to 1024, then stopped. Ask it about position
+# 1025 and there is simply nothing there — like a book with numbered pages where
+# page 1025 was never printed. RoPE instead *rotates* each query and key by an
+# angle proportional to its position. Rotation is a formula, not a table, so
+# position 5000 is as computable as position 5. Better still, the dot product
+# between two rotated vectors depends only on the **difference** of their angles
+# — so attention naturally sees *relative* distance, which is what actually
+# matters. "The word three tokens back" means the same thing at the start of a
+# document and 4,000 tokens in.
+#
+# **RMSNorm — "the mean subtraction wasn't doing anything."** LayerNorm centres
+# activations (subtract the mean) then scales them (divide by the standard
+# deviation). Someone checked whether the centring step mattered. It mostly does
+# not — the scaling is what stabilises training. Dropping it removes a mean, a
+# subtraction, and a bias term from every norm in the network. Same quality,
+# ~10-15% less norm compute, and norms run constantly. This is the least
+# interesting change and the easiest free win.
+#
+# **SwiGLU — "let the network decide what to let through."** A standard MLP
+# applies the same fixed nonlinearity to everything. A *gated* MLP computes two
+# projections and multiplies them: one is the content, the other is a learned
+# gate deciding how much of that content passes. Think of a dimmer switch per
+# dimension, set by the input itself, instead of one fixed rule for all inputs.
+# It costs a third matrix, so implementations shrink the hidden dimension to
+# `(8/3)d` to keep the parameter count matched — and still come out ahead.
+#
+# **GQA — "the KV cache is eating your VRAM."** At inference the model caches a
+# key and value vector for every past token, for every head, in every layer.
+# With 32 heads that cache dominates memory and grows with every token you
+# generate. GQA has several query heads *share* one key/value pair — 32 query
+# heads over 8 KV pairs cuts the cache 4×. The queries still differ, so the heads
+# still ask different questions; they just consult a shared index. Quality cost
+# is small; memory saving is enormous, and it is what makes long-context serving
+# affordable.
+#
+# Notice the pattern: **three of the four are about inference, not training.**
+# The field learned that a model is trained once and served billions of times, so
+# architecture drifted toward whatever makes serving cheap.
 
 # %%
 import math

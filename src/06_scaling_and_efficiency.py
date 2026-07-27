@@ -115,12 +115,56 @@ for hours in [1, 6, 24, 168]:
 # that you're actually using. It's the single best number for "is my training
 # loop leaving performance on the table?"
 #
+# ### Why you need a *ratio*, not a speed
+#
+# "4,200 tokens/sec" tells you nothing on its own. Is that good? It depends on
+# the model size, the sequence length, and the card. Halve your model and tokens
+# per second doubles — you have not improved anything, you have just done less
+# work per token.
+#
+# MFU normalizes all of that away:
+#
+# ```
+#           FLOPs your model actually needs, per second
+# MFU  =   ---------------------------------------------
+#              FLOPs your GPU can theoretically do
+# ```
+#
+# The numerator is arithmetic — a known function of your architecture, computed
+# below. The denominator is a spec-sheet number. The ratio answers one question:
+# **of the maths your GPU could have done this second, what fraction went into
+# your model?** Everything else — waiting on data, launching kernels, moving
+# memory, recomputing activations — is the gap.
+#
+# It is a *speedometer relative to the speed limit*, and unlike tokens/sec it is
+# comparable across model sizes, sequence lengths, and even across GPUs.
+#
 # | MFU | verdict |
 # |---|---|
 # | <15% | something is badly wrong — data loading, tiny batches, no autocast |
 # | 20–35% | typical unoptimized loop |
 # | 35–50% | good for a single consumer GPU |
 # | 50–60% | excellent; what well-tuned large runs achieve |
+#
+# **Nobody gets 100%, and you should not chase it.** Peak FLOPS assumes every
+# clock cycle is a fused multiply-add on data already sitting in registers. Real
+# training reads and writes memory constantly, and memory bandwidth — not
+# arithmetic — is usually the actual ceiling. Above ~50% on a consumer card you
+# are into diminishing returns; spend the effort on a better dataset instead.
+#
+# **Where the missing MFU usually hides**, in the order worth checking:
+#
+# | symptom | likely cause | fix |
+# |---|---|---|
+# | MFU < 15%, GPU util spiky | data loader starving the GPU | `.bin` on the Linux FS (notebook 01), memmap |
+# | MFU ~20%, GPU util high | fp32 instead of bf16 | `autocast` |
+# | MFU ~25% on a small model | kernel launch overhead dominates | `torch.compile`, larger batch |
+# | MFU drops when you raise `block_size` | attention's T² term | expected — it is real work, not waste |
+#
+# That last row matters: MFU falling as sequence length grows is not necessarily
+# a regression. The quadratic attention term is genuine computation, and the
+# formula below counts it, which is why this estimate is more honest than the
+# "6ND" rule of thumb you will see quoted elsewhere.
 
 # %%
 def model_flops_per_token(n_layer, n_embd, n_head, block_size, vocab_size) -> float:
