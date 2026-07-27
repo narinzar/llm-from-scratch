@@ -157,6 +157,48 @@ else:
 # token of activation. That is why full-finetuning a 7B model on 24 GB is
 # impossible, and why LoRA exists (notebook 08).
 #
+# **Why 16 bytes and not 2.** This surprises everyone the first time, so it is
+# worth walking through. You might reasonably expect a bf16 model to cost 2 bytes
+# per parameter. The other 14 are the *optimizer*, and they are not optional:
+#
+# - AdamW keeps an **fp32 master copy** of every weight (4 bytes). Updates are
+#   tiny — often 1e-7 relative to the weight — and bf16 has only ~3 decimal
+#   digits of precision, so adding an update directly to a bf16 weight rounds to
+#   *no change at all*. The fp32 copy is what makes small updates accumulate.
+# - It keeps **two running averages per parameter**, `m` and `v` (4 bytes each),
+#   which is the entire content of "adaptive" in Adam.
+#
+# 2 + 4 + 2 + 4 + 4 = 16. The model is one-eighth of its own training footprint.
+#
+# This immediately explains three things you will meet later:
+#
+# | technique | what it drops | notebook |
+# |---|---|---|
+# | **SGD instead of Adam** | both `m` and `v` — 8 bytes/param | — (worse convergence, rarely worth it) |
+# | **LoRA** | trains ~1% of parameters, so optimizer state shrinks ~100× | 08 |
+# | **QLoRA** | base weights to 4-bit *and* LoRA on top | 08 |
+# | **8-bit Adam** | `m` and `v` to 1 byte each — 6 bytes/param saved | 08 |
+#
+# **Do the arithmetic before you launch, not after.** A quick worked example for
+# your 24 GB card, full fine-tuning a 1.5B model:
+#
+# ```
+# state:       1.5B × 16 bytes  = 24.0 GB   <- already over budget
+# activations: (whatever they are) > 0
+# ```
+#
+# Over before activations. With LoRA at rank 16, the same model:
+#
+# ```
+# frozen base (bf16):  1.5B × 2      =  3.0 GB
+# LoRA params + Adam:  ~10M × 16     =  0.16 GB
+# activations:                       ~  2-4 GB
+# total:                             ~  6 GB   <- comfortable
+# ```
+#
+# Same model, same GPU, 4× headroom. That is the entire argument for notebook 08,
+# and you can now derive it yourself rather than taking it on faith.
+#
 # Activations scale with `batch × seq_len × layers × d_model`, and are the part
 # you control at runtime via batch size and gradient checkpointing.
 

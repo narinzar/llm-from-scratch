@@ -428,6 +428,53 @@ def train(cfg: TrainConfig, resume: bool = False) -> dict:
 
 
 # %% [markdown]
+# ## What the loss number actually means
+#
+# You are about to stare at one number for fifteen minutes, so it is worth
+# knowing what it measures.
+#
+# The model outputs a probability for every token in the vocabulary at every
+# position. The loss is **cross-entropy**: the negative log of the probability
+# it assigned to the token that actually came next.
+#
+# ```
+# loss = -ln( p(correct next token) )
+# ```
+#
+# That is all. Which gives you a conversion you can do in your head:
+#
+# | loss | `p(correct token)` | what it means |
+# |---|---|---|
+# | 10.82 | 1/50257 | uniform guessing over the vocabulary |
+# | 6.9 | 1/1000 | narrowed to ~1000 plausible tokens |
+# | 4.6 | 1/100 | narrowed to ~100 |
+# | 2.3 | 1/10 | narrowed to ~10 — text starts looking like English |
+# | 1.6 | ~1/5 | fluent on simple text |
+# | 0.0 | 1.0 | perfect prediction (means you are overfitting) |
+#
+# **Why training starts at ln(vocab_size).** At initialization the model knows
+# nothing, so it spreads probability uniformly: `p = 1/50257` for every token,
+# and `-ln(1/50257) = 10.82`. This is the single most useful debugging check in
+# the whole course. If your first loss is not ≈10.82, stop — you have a bug
+# *before* you have a training problem:
+#
+# | first loss | almost certainly |
+# |---|---|
+# | ≈ 10.82 | correct |
+# | ≈ 0 | labels leaked into the input; the model can see the answer |
+# | 15–20+ | bad init (weights too large), or logits not scaled |
+# | `nan` | `-inf` in the input, or fp16 overflow |
+#
+# **Perplexity** is just `exp(loss)`, and it has a nicer reading: "the model is
+# as confused as if it were choosing uniformly among this many options." Loss
+# 2.3 → perplexity 10 → "about 10 plausible next tokens." Papers report
+# perplexity; training loops print loss; they are the same fact.
+#
+# One caution: **perplexity is only comparable within the same tokenizer.** A
+# model with a 32k vocab and one with a 128k vocab cannot be compared by
+# perplexity, because they are not predicting the same units. This trips up a
+# lot of model comparisons on leaderboards.
+#
 # ## Run 1 — the smoke test (~15 min)
 #
 # A 10M-parameter model on TinyStories. Watch for:
@@ -438,6 +485,38 @@ def train(cfg: TrainConfig, resume: bool = False) -> dict:
 #
 # TinyStories has a small vocabulary and simple grammar, so low loss is
 # achievable. If loss plateaus above 5, something is wrong.
+#
+# **What you should see.** Roughly this shape — the exact numbers will drift,
+# the shape should not:
+#
+# ```
+#   step     train      val       lr
+#      0   10.8241  10.8198  6.00e-05
+#    100    5.1032   5.0876  3.00e-04
+#    500    2.8814   2.9001  2.87e-04
+#   1000    2.1077   2.1355  2.41e-04
+#   2000    1.7215   1.7684  1.24e-04
+# ```
+#
+# Three things to notice, because each one teaches something:
+#
+# **The first drop is enormous, then it slows.** 10.8 → 5.0 in 100 steps is the
+# model learning token *frequency* — that "the" is common and "zygote" is not.
+# That is cheap. Everything after is learning *context*, which is the hard part.
+# A loss curve that looks like it stalled after the first plunge has not stalled;
+# that is what learning looks like from step 200 onward.
+#
+# **Val tracks train closely here.** On 20M tokens with a 10M-parameter model you
+# are nowhere near enough capacity to memorize, so the two curves sit on top of
+# each other. When you scale to the 124M model on FineWeb-Edu, watch for them to
+# separate — that gap *is* overfitting, measured.
+#
+# **The learning rate rises, then falls.** It climbs during warmup and decays
+# after. If your loss spikes exactly when the LR peaks, your peak LR is too high.
+#
+# Timing on an RTX 5090: expect **12–20 minutes** for the smoke run. If it is
+# projecting hours, your throughput is wrong — check `tokens/sec` against
+# notebook 06 before letting it run.
 
 # %%
 history_smoke = train(smoke)

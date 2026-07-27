@@ -357,6 +357,41 @@ print(f"\nround-trip: {'ALL PASS' if all_ok else 'FAILURES PRESENT'}")
 # A tokenizer's job is to represent text in fewer tokens. **Bytes per token** is
 # the score. Higher = each token carries more text = longer effective context
 # and cheaper inference.
+#
+# It is worth being concrete about why one number deserves this much attention.
+# Compression is not an aesthetic preference — it multiplies through everything:
+#
+# | If compression goes from 3.5 → 4.2 bytes/token | effect |
+# |---|---|
+# | same document | **17% fewer tokens** |
+# | context window | holds **17% more text** for the same `block_size` |
+# | training | 17% fewer tokens to process for the same corpus — *directly* fewer GPU-hours |
+# | inference | 17% fewer forward passes to generate the same text |
+# | API cost | 17% cheaper, since billing is per token |
+#
+# One number, and it moves your compute bill, your effective context, and your
+# generation latency together.
+#
+# **What counts as good.** For English prose with a byte-level BPE:
+#
+# | bytes/token | verdict |
+# |---|---|
+# | ~1.0 | no merges learned — you are emitting raw bytes; something is broken |
+# | 2.5–3.0 | small vocabulary (512–1k), or badly mismatched domain |
+# | 3.5–4.0 | reasonable |
+# | 4.0–4.5 | **GPT-2 territory on English — the number to beat** |
+# | 5.0+ | either a large vocabulary, or you are testing on your training data |
+#
+# That last row is the trap. Compression measured on text the tokenizer trained
+# on is meaningless — the merges memorized exactly those strings. This is why the
+# cell below evaluates on the **validation** split, and why you should be
+# suspicious of any tokenizer benchmark that does not say what it held out.
+#
+# **What you should see below:** compression rising with vocabulary size but with
+# clearly diminishing returns — roughly 3.0 → 3.6 → 4.0 across 512 → 1000 → 2000
+# — and GPT-2's 50k vocabulary beating all three. Doubling the vocabulary does
+# *not* double compression; each doubling buys progressively less, because the
+# frequent pairs get merged first and what remains is rarer.
 
 # %%
 def compression(tk, text: str) -> float:

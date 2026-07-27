@@ -34,6 +34,20 @@ print(f"torch {torch.__version__} on {device}")
 # from other positions. "The animal didn't cross the street because **it** was
 # too tired" — to represent `it`, position 9 must look back at `animal`.
 #
+# ### Why not just use a fixed rule?
+#
+# Before the mechanism, notice why the obvious approaches fail. You could
+# average every position equally — but then `it` gets as much from `the` as from
+# `animal`, and word order stops mattering. You could use a fixed window of the
+# last *k* tokens — that is a convolution, and it cannot reach back 40 words to
+# find `animal`. You could process left-to-right carrying a state vector — that
+# is an RNN, and it is both sequential (no GPU parallelism) and forgetful over
+# long distances.
+#
+# What you actually want is for **each position to decide, from content, which
+# other positions matter to it** — and for all positions to do that decision
+# simultaneously. That is attention.
+#
 # ### The mechanism
 #
 # Every token emits three vectors:
@@ -44,8 +58,32 @@ print(f"torch {torch.__version__} on {device}")
 # | **key** `k` | what I offer | a document's index terms |
 # | **value** `v` | what I'll actually give you | the document's content |
 #
+# The library analogy is worth holding onto. Each token walks into a library
+# with a **question** (its query). Every book on the shelf has a **spine label**
+# (its key) and **contents** (its value). You compare your question against every
+# spine label, and the better the match, the more of that book's contents you
+# take away. Attention is that, with dot products for "how well does this match"
+# and a weighted average for "take some of each."
+#
 # Relevance of position `j` to position `i` is `q_i · k_j`. Softmax over `j`
 # turns those scores into weights, and the output is the weighted sum of values.
+#
+# Three properties fall out of this, and they are the whole reason transformers
+# won:
+#
+# - **Content-based.** Which positions matter is computed from the vectors
+#   themselves, not fixed by architecture. The same layer handles "`it` refers to
+#   `animal`" and "`it` refers to `street`" depending on the sentence.
+# - **Distance-independent.** Position 9 reaching position 2 costs exactly what
+#   reaching position 8 costs. An RNN's path length grows with distance;
+#   attention's is always 1.
+# - **Parallel.** Every position's output is computed at once, as one matmul.
+#   This is why transformers train on GPUs and RNNs crawl.
+#
+# The price is that every position looks at every position, so cost grows as
+# **T²** in sequence length. That single fact drives most of what follows in this
+# course — flash attention, KV caching, GQA, sliding windows — all of it is
+# fighting that quadratic.
 #
 # Start with a single position, no batching, explicit loops.
 
