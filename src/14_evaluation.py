@@ -14,6 +14,47 @@
 #
 # Most published LLM improvements are smaller than their error bars. By the end
 # of this notebook you should be unable to fool yourself in the usual ways.
+#
+# ### The restaurant, closing the loop
+#
+# Notebook 08 opened with a chef. Everything since has been about improving
+# them — your menu, a critic, diner preferences, health inspections. This
+# notebook asks the only question that ever mattered: **is the food actually
+# better?**
+#
+# And it is where the analogy gets uncomfortable, because the ways a restaurant
+# fools itself map exactly onto the ways teams fool themselves about models:
+#
+# | in the restaurant | in ML | notebook section |
+# |---|---|---|
+# | asking the chef whether the food improved | reading your own training loss | Level 1 |
+# | serving three friends and calling it a survey | evaluating on 50 examples | statistical significance |
+# | the critic you trained also grades the final | LLM-as-judge with the same model family | Level 3 |
+# | the exam questions were on the practice sheet | benchmark contamination in pretraining | contamination |
+# | perfecting carbonara while the pizza got worse | task metric up, everything else degraded | Level 4 |
+#
+# Each of those has a section below. None is hypothetical — all five are routine
+# in published work.
+#
+# ### The four levels, and what each is actually for
+#
+# Evaluation is not one thing. These are four different instruments, and using
+# the wrong one is most of how people go wrong:
+#
+# | level | measures | trust it for | do not trust it for |
+# |---|---|---|---|
+# | **1. Perplexity** | how well the model predicts held-out text | pretraining progress; catching regressions | anything after SFT — a chatty model has *worse* perplexity and is more useful |
+# | **2. Benchmarks** | accuracy on fixed question sets | comparing against published numbers | your specific task; anything contaminated |
+# | **3. LLM-as-judge** | a strong model's preference | open-ended quality at scale | small gaps — judges have position and verbosity biases |
+# | **4. Your own task eval** | does it do *your* job | the only thing that decides shipping | comparing to anyone else's model |
+#
+# The progression is deliberate: cheap and general at the top, expensive and
+# specific at the bottom. **Level 4 is the one that decides whether you ship.**
+# The first three exist to catch problems early and cheaply, not to make the
+# decision.
+#
+# If you take one habit from this notebook, take this: **always evaluate the
+# thing you did not train on.** Notebook 08's retention axis, measured here.
 
 # %%
 import json

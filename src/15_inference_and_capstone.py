@@ -50,6 +50,65 @@ print(f"device: {device}")
 # token.
 #
 # Complexity for generating n tokens goes from **O(n³)** to **O(n²)**.
+#
+# **Why they never change** is worth pinning down, because it is the whole
+# justification. Attention is *causal*: token 5 attends to tokens 1–5 and never
+# to 6. So token 3's key and value are computed from tokens 1–3 alone. Appending
+# token 6 cannot alter them — there is no path by which a later token influences
+# an earlier one. Anything that cannot change is a candidate for caching, and
+# these are the largest such thing in the model.
+#
+# Note carefully what is *not* cached: the **query**. Each new token asks its own
+# fresh question of the past. Keys and values are the library; the query is this
+# token's question, and you need a new one every step. That asymmetry is exactly
+# why the technique is called a *KV* cache.
+#
+# ### The cost you just moved
+#
+# Caching does not make the work disappear — it trades **compute for memory**,
+# and the memory is substantial:
+#
+# ```
+# cache bytes = 2 (K and V) × layers × kv_heads × head_dim × seq_len × batch × dtype_bytes
+# ```
+#
+# For a 7B model in bf16 at 4,096 tokens that is roughly **2 GB for a single
+# sequence** — often more than the activations, and it grows with every token
+# you generate. Serve ten concurrent users and the cache, not the weights, is
+# what runs you out of VRAM.
+#
+# This is the single fact behind most of modern inference engineering:
+#
+# | technique | what it does to the cache |
+# |---|---|
+# | **GQA** (notebook 05) | fewer KV heads — divides it directly |
+# | **Quantized cache** (fp8/int8) | halves the bytes per entry |
+# | **PagedAttention** (vLLM) | stops preallocating for max length; pages it like virtual memory |
+# | **Sliding-window attention** | caps the cache at a fixed window instead of growing |
+#
+# All four attack the same line of arithmetic above. Knowing that formula lets
+# you predict how many concurrent users a card can serve — which is the actual
+# question in production, and one you can now answer with multiplication.
+#
+# ### Why generation feels slow even on a fast GPU
+#
+# There is a deeper consequence. With a KV cache, generating one token means
+# reading **every weight in the model** to do a small amount of arithmetic on a
+# single token. That is *memory-bandwidth bound*, not compute bound — your GPU
+# is mostly waiting on memory, and its TFLOPS are largely irrelevant.
+#
+# Which explains two things that otherwise look strange:
+#
+# - **Batching is nearly free.** Generating for 16 users takes barely longer than
+#   for 1, because you read the weights once and reuse them across the batch.
+#   Throughput scales; latency barely moves.
+# - **Prompt processing is much faster per token than generation.** The prompt is
+#   processed in parallel (compute bound, high MFU); generation is one token at a
+#   time (bandwidth bound, low MFU). A 2,000-token prompt can be cheaper than the
+#   200 tokens you generate from it.
+#
+# Speculative decoding, in Part 5, is a direct attack on this: if you are
+# bandwidth-bound anyway, you may as well verify several guessed tokens per pass.
 
 # %%
 class CachedAttention(nn.Module):

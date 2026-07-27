@@ -163,6 +163,37 @@ for k, comp in enumerate(fake):
 # ## Measure the baseline FIRST
 #
 # You cannot claim improvement without a before number. Do this before training.
+#
+# This sounds obvious and is skipped constantly. The reason it gets skipped is
+# psychological: after training you have a number, it looks good, and finding a
+# baseline feels like homework. So people compare against a *remembered* figure,
+# or a published one measured with a different prompt, and conclude they gained
+# ten points they never gained.
+#
+# **The baseline must be measured by this code, on this split, with this prompt
+# template, on this machine.** Every one of those changes the number:
+#
+# | change | effect on GSM8K accuracy |
+# |---|---|
+# | different prompt template | several points, easily |
+# | `temperature=0` vs `0.7` | several points, and adds variance |
+# | 200 examples vs the full 1,319 | ±4 points of noise either way |
+# | different answer-extraction regex | several points — a correct answer scored wrong |
+#
+# That last one is the sneakiest. Half of apparent "gains" on maths benchmarks
+# are the extractor getting better at *parsing* the model, not the model getting
+# better at *maths*. Since we use the same extractor before and after, that
+# cancels out — but only because we measured both ends the same way.
+#
+# **What to expect for Qwen2.5-0.5B-Instruct on GSM8K:** roughly **30–40%**
+# greedy pass@1. If your baseline comes back near 0%, do not start training —
+# something is wrong with the extractor or the chat template, and you would be
+# "improving" a broken measurement. If it comes back above 60%, be suspicious of
+# contamination or an over-permissive extractor.
+#
+# Note also that we evaluate at `temperature=0.0`. Training samples at high
+# temperature (that is where exploration comes from), but *evaluation* must be
+# deterministic, or you cannot separate a real gain from a lucky sample.
 
 # %%
 from transformers import AutoModelForCausalLM, AutoTokenizer

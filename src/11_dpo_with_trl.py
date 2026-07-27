@@ -161,6 +161,31 @@ print(f"steps: {len(trainer.get_train_dataloader())}")
 # %% [markdown]
 # ## Reading the metrics — the actual skill
 #
+# **Why loss is the wrong thing to watch here.** In pretraining (notebook 04),
+# loss was a direct measure of the thing you wanted: predict the next token
+# better. In DPO it is not. The loss only measures whether chosen is ranked
+# *above* rejected — a **relative** quantity. And there are two completely
+# different ways to improve a ratio:
+#
+# ```
+# raise the numerator:   p(chosen) up,    p(rejected) flat   <- what you want
+# lower the denominator: p(chosen) down,  p(rejected) way down  <- degeneration
+# ```
+#
+# **Both make the loss fall.** Both make the margin grow. One produces a better
+# model; the other produces a model that has learned to dislike everything, and
+# merely dislikes the rejected response slightly more. The loss curve cannot tell
+# them apart, which is why a beautiful DPO loss curve is compatible with a model
+# that has become worse at everything.
+#
+# In restaurant terms: your chef can improve their score either by cooking the
+# good dish better, or by getting worse at *every* dish while getting worse at
+# the bad one faster. The score improves identically. Only by checking whether
+# the good dish is still good do you catch it.
+#
+# That is why the table below has `rewards/chosen` as the alarm, and why you
+# check absolute quantities, not just the gap.
+#
 # TRL logs these. **Most people only watch `loss`, which is the least useful.**
 #
 # | metric | healthy | what it means |
