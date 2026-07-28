@@ -110,6 +110,29 @@ def to_ipynb(cells: list[dict]) -> dict:
     }
 
 
+def check_cells(cells: list[dict], name: str) -> list[str]:
+    """Catch real code stranded inside a markdown cell.
+
+    Editing prose around a code cell makes this easy to do: insert a
+    `# %% [markdown]` above a function and it silently stops executing, because
+    markdown cells run nothing. The notebook still builds and still parses --
+    you only find out when a later cell dies with NameError. Cheap to detect,
+    so detect it.
+    """
+    problems = []
+    for i, cell in enumerate(cells):
+        if cell["type"] != "markdown":
+            continue
+        code = [l for l in cell["lines"]
+                if l.strip() and not l.lstrip().startswith("#")]
+        if code:
+            problems.append(
+                f"{name}: cell {i} is markdown but holds {len(code)} line(s) "
+                f"of code -- first is {code[0].strip()[:60]!r}"
+            )
+    return problems
+
+
 def main() -> int:
     if not SRC.is_dir():
         print(f"no source dir: {SRC}", file=sys.stderr)
@@ -118,6 +141,7 @@ def main() -> int:
     needle = sys.argv[1] if len(sys.argv) > 1 else ""
 
     built = 0
+    problems: list[str] = []
     for path in sorted(SRC.glob("*.py")):
         if needle and needle not in path.name:
             continue
@@ -125,6 +149,7 @@ def main() -> int:
         if not cells:
             print(f"  skip (no cells) {path.name}")
             continue
+        problems += check_cells(cells, path.name)
         dest = OUT / (path.stem + ".ipynb")
         dest.write_text(
             json.dumps(to_ipynb(cells), indent=1, ensure_ascii=False) + "\n",
@@ -135,6 +160,13 @@ def main() -> int:
         built += 1
 
     print(f"built {built} notebook(s) -> {OUT}")
+    if problems:
+        print("\nERROR: code stranded in markdown cell(s) -- it will never run:",
+              file=sys.stderr)
+        for p in problems:
+            print(f"  {p}", file=sys.stderr)
+        print("\nAdd a '# %%' marker above the code.", file=sys.stderr)
+        return 1
     return 0
 
 

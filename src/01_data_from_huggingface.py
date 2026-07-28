@@ -409,7 +409,7 @@ for w in ["the", " the", "cat", "Antidisestablishmentarianism", "1234567"]:
 # We use the GPT-2 tokenizer here so this notebook stands alone; notebook 02
 # builds a tokenizer from scratch and you can rerun this with your own.
 
-
+# %%
 def build_bin(
     out_path: Path,
     hf_name: str,
