@@ -7,6 +7,50 @@
 #
 # **Time:** 45–60 min.
 #
+# ## In plain language
+#
+# **What you're doing:** teaching your model that when someone asks a question,
+# it's supposed to *answer* — not just continue the text.
+#
+# **The everyday version.** Imagine someone who has read every book in a library
+# but has never had a conversation. Ask them *"What's the capital of France?"*
+# and they might continue with *"...is a question on many geography exams."*
+#
+# That's not stupidity. They're doing exactly what they learned — continuing
+# text. Nobody ever told them that a question is a request for a reply. This
+# notebook is that conversation.
+#
+# **What you're actually changing.** Not the model's knowledge — it keeps
+# everything it learned in notebook 04. You're changing its **behaviour**: what
+# it does with a question. Same knowledge, different reflex.
+#
+# **How you do it:** show it thousands of examples of the pattern
+# *question → answer*, and train it to produce the answer half. Two details make
+# it work, and both are in this notebook:
+#
+# 1. **A format** so the model can tell who's speaking — the chat template.
+# 2. **Grading only the answer half**, never the question half — loss masking.
+#    (Otherwise you teach it to make up questions, which is worse than useless.)
+#
+# **What you'll have at the end:** a model you can type a question at and get a
+# reply from. That is a genuinely different kind of object from what notebook 04
+# produced.
+#
+# **What to expect — please read this part.** Your model is 124M parameters
+# trained on children's stories. After SFT it will **follow the shape of a
+# conversation** and produce confident, fluent, *wrong* answers:
+#
+# > **you:** What is the capital of France?
+# > **it:** The capital of France is a big city where many people live.
+#
+# **That is the correct outcome for this notebook.** It learned the *format*,
+# which is what SFT teaches. It doesn't know the answer because it never read
+# anything containing the answer. Knowledge comes from pretraining; behaviour
+# comes from SFT. You're isolating the second one so you can see it clearly.
+#
+# If you want a model that also knows things, that's notebook 08 — same
+# technique, applied to a real 0.5B model that actually read the internet.
+#
 # ## Base models vs instruct models
 #
 # Your pretrained model from notebook 04 does exactly one thing: continue text.

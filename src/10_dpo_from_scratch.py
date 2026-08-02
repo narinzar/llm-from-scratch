@@ -6,6 +6,45 @@
 #
 # **Time:** 45–60 min.
 #
+# ## In plain language
+#
+# **What you're doing:** improving the model directly from "people preferred this
+# answer over that one" — with no judge model in the middle.
+#
+# **The everyday version.** Notebook 09 built a judge, and the plan was: model
+# writes, judge scores, model adjusts, repeat. It works, but count what's running
+# — the model, the judge, a frozen copy of the model to stop it drifting, and a
+# loop generating fresh answers just to be scored. Four moving parts, slow, and
+# fragile.
+#
+# **DPO's question is: why do we need the judge at all?** You already have the
+# thing the judge was trained on — the pairs where a human said "this one."
+# Train the model on those directly.
+#
+# It's the difference between *"hire a critic, then cook to please the critic"*
+# and *"just show the chef the dishes people preferred."* Same information, three
+# fewer moving parts.
+#
+# **Why this was a big deal.** DPO (2023) took a pipeline that needed a team and
+# a cluster and turned it into something that looks like ordinary training — one
+# model, one loss function, a fixed dataset. It's why preference tuning is now
+# something you can do on one GPU in an afternoon. Most open models you can
+# download were tuned this way.
+#
+# **What you'll have at the end:** the DPO loss written from scratch, a training
+# run using it, and — most importantly — the ability to spot its main failure
+# mode.
+#
+# **What to expect, including the trap.** DPO works and is easy to run wrong in a
+# way that *looks* like it's working. The loss falls beautifully, the metrics
+# improve, and the model gets worse. You'll produce that failure deliberately
+# here so you recognize it later.
+#
+# The one-line version: watch whether the model is getting **better at good
+# answers**, or merely **worse at everything and worst at bad answers**. Both
+# make the loss drop. Only one is what you want. There is a specific number that
+# tells them apart, and finding it is most of this notebook.
+#
 # ## The problem DPO solves
 #
 # **The restaurant again.** Notebook 09 trained a food critic from diners'

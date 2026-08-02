@@ -7,6 +7,48 @@
 #
 # **Time:** 45 min.
 #
+# ## In plain language
+#
+# **What you're doing:** training a second model whose only job is to look at an
+# answer and score it. Not to write anything — just to judge.
+#
+# **The everyday version.** You're teaching someone to cook. You could write out
+# the perfect recipe for every dish — impossible, nobody can do that. Or you
+# could taste two attempts and say *"this one's better."* Easy, fast, and you can
+# do it consistently even when you can't explain why.
+#
+# Now: you can't personally taste every dish they'll ever make. So you train a
+# **judge** from your comparisons, and let the judge score everything from then
+# on.
+#
+# **Why bother?** Because "a good answer" can't be written down. Nobody can
+# specify the ideal response to *"explain quantum computing."* But show anyone
+# two attempts and they'll pick one immediately. Preferences are easy to collect;
+# specifications are impossible to write.
+#
+# **What you'll have at the end:** a model that takes any answer and returns a
+# number. Higher = better. Notebooks 10–13 use exactly this signal to improve the
+# model that writes.
+#
+# **What to expect — the number that surprises people.** A good reward model gets
+# **65–75%** agreement with humans. That sounds broken. It isn't:
+#
+# - humans only agree with *each other* about 70–80% of the time
+# - a model scoring 95% has learned something shallow, like "longer is better",
+#   not something real
+#
+# **You'll prove that second point yourself.** There's a cell here that trains a
+# "reward model" which sees *nothing but the length of the answer* — no words, no
+# meaning, just a character count. It gets around **65%**. That is the floor your
+# real model must beat to be doing anything at all, and it is a genuinely
+# unsettling result to produce with your own hands.
+#
+# **The big idea to take away:** the judge is a *proxy* for what you want, and
+# optimizing hard against a proxy breaks it. If your judge secretly rewards
+# length, your model learns to waffle. This is called reward hacking, it is the
+# central problem in this part of the course, and notebook 12 is largely a
+# response to it.
+#
 # ## Why preferences instead of labels
 #
 # **Back to the restaurant** (notebook 08). Your chef now cooks your menu. But

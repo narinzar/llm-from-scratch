@@ -9,6 +9,40 @@
 # This notebook is short by design. You built DPO in notebook 10; here you learn
 # the production controls and — more importantly — **how to tell whether it
 # worked.**
+#
+# ## In plain language
+#
+# **What you're doing:** running the thing you built by hand in notebook 10, but
+# on a real model, using the library everyone actually uses.
+#
+# **The everyday version.** You learned to make pasta from flour and eggs so you
+# understand what pasta *is*. Now you're using the machine, because you have
+# dinner to serve. Nothing is wasted — you know what the machine is doing, which
+# is exactly why you can tell when it's doing it wrong.
+#
+# **What's genuinely new here:** notebook 10 ran on a toy model with made-up
+# data. This runs on a real 0.5B model with real human preferences, and it fits
+# on your card. You'll also meet one clever trick: instead of loading two copies
+# of the model (the one you're training and the frozen reference), LoRA lets you
+# get the reference for free by switching the adapter off. Halves your memory.
+#
+# **What you'll have at the end:** a preference-tuned model, and — more valuable
+# — the ability to read a training dashboard and say *"this is going wrong"*
+# before you've wasted an hour.
+#
+# **What to expect.** The changes are subtle. Preference tuning doesn't teach new
+# facts; it adjusts tone, helpfulness, formatting, willingness to refuse. Put the
+# before and after side by side and the difference is real but not dramatic —
+# more polite, better structured, less likely to trail off.
+#
+# **Do not judge it by reading a few outputs.** Human judgement of small quality
+# differences is unreliable, especially on your own work, where you want it to
+# have worked. That's what notebook 14 is for.
+#
+# **The one thing to watch** is a metric called `rewards/chosen`. If it drifts
+# strongly negative, your model is degenerating even though every other number on
+# the dashboard looks excellent. That single check is the most useful thing in
+# this notebook.
 
 # %%
 import gc
