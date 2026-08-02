@@ -6,6 +6,53 @@
 #
 # **Time:** 30 min setup, 2–5 h training. This is the most expensive notebook.
 #
+# ## In plain language
+#
+# **What you're doing:** taking a small model that's mediocre at grade-school
+# word problems and training it, for real, to be better — using only "was the
+# final answer right?" as feedback.
+#
+# **The everyday version.** GSM8K is a set of maths problems a bright 10-year-old
+# could do:
+#
+# > *Natalia sold clips to 48 friends in April, then sold half as many in May.
+# > How many did she sell altogether?*
+#
+# The model attempts each one eight times. A script checks the final number
+# against the known answer. Attempts that got it right get reinforced. Repeat for
+# a few hours.
+#
+# **Nobody shows it how to solve anything.** No worked examples, no method. Just
+# right or wrong, thousands of times.
+#
+# **What to expect, concretely:** a jump from roughly **30–40%** correct to
+# **45–60%**. That's a real, measurable gain of 10–20 points, produced without a
+# single human-written solution.
+#
+# **What you'll see the model start doing on its own:** working through steps
+# before answering, and sometimes checking itself. Nobody asked for that. It
+# emerges because careful reasoning produces more right answers, and right
+# answers score higher. Watching that appear in your own run is the payoff of the
+# whole course.
+#
+# **The costs, stated up front — this is the expensive one:**
+#
+# | | |
+# |---|---|
+# | time | 2–5 hours of GPU, and it will run hot |
+# | why so slow | the model must *generate* 8 answers per question before it can learn anything |
+# | disk | a few GB of checkpoints |
+# | frustration | genuinely possible for this to improve nothing |
+#
+# **That last row is not a joke.** RL is finicky. If your problems are too hard,
+# the model never gets one right and learns nothing. Too easy, same. If your
+# answer-checker is slightly wrong, it learns to game the checker instead of
+# doing maths. The notebook tells you what each failure looks like.
+#
+# **Before you start:** measure the baseline. You cannot claim an improvement
+# without a before-number measured by this same code. The next-but-one section is
+# about exactly that, and it's the most-skipped step in machine learning.
+#
 # ## What to expect
 #
 # On a 5090 with Qwen2.5-0.5B-Instruct and a few hours of GRPO on GSM8K, a

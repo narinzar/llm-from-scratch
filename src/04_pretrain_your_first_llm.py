@@ -7,7 +7,9 @@
 #
 # **Time:** 15 min for the TinyStories run, 3–6 h for the FineWeb-Edu run.
 #
-# ## What "training" actually means, in plain language
+# ## In plain language
+#
+# ### What "training" actually means
 #
 # This is the notebook where a model is created. It is worth being concrete about
 # what that sentence means, because "training an AI" sounds mystical and is not.

@@ -7,6 +7,43 @@
 #
 # **Time:** 30–60 min. **Disk:** ~2 GB for the default 500M-token slice.
 #
+# ## In plain language
+#
+# **What you're doing:** collecting the text your model will learn from, cleaning
+# it, and converting it into a format a model can read.
+#
+# **The everyday version.** Before anyone can learn to write, they have to read
+# an enormous amount. This notebook is choosing what your model gets to read, and
+# turning those books into a form it can process.
+#
+# **Three jobs, in order:**
+#
+# 1. **Download text** — millions of documents, streamed so they never all sit on
+#    your disk at once.
+# 2. **Throw away the rubbish** — the web is full of navigation menus, spam, and
+#    the same page copied a thousand times. Roughly **half** gets discarded, and
+#    that's the good outcome.
+# 3. **Convert to numbers** — models can't read letters, only numbers. This is
+#    tokenization, explained properly below.
+#
+# **What you'll have at the end:** one file of numbers. Not a model — nothing has
+# been trained yet. Think of it as printing the textbook; notebook 04 is where
+# the model reads it.
+#
+# **What to expect:**
+#
+# | | |
+# |---|---|
+# | small practice corpus | 40 MB, under a minute |
+# | real corpus | 1 GB, ~20 minutes |
+# | how much gets thrown away | 40–60% of documents |
+#
+# **Why so much care about the data?** Because this decides your ceiling. A model
+# is mostly a reflection of what it read — feed it rubbish and no amount of clever
+# training rescues it. The single biggest quality difference between open models
+# is data, not architecture. This notebook is genuinely more important than the
+# one where the model gets trained.
+#
 # ## Why this notebook comes first
 #
 # The uncomfortable truth of the last few years: **at a fixed compute budget,

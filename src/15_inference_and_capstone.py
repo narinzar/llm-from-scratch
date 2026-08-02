@@ -6,6 +6,53 @@
 #
 # **Time:** 60 min + the capstone.
 #
+# ## In plain language
+#
+# **What you're doing:** making your model *usable* — fast enough and small
+# enough that someone could actually run it.
+#
+# **The everyday version.** You've spent fourteen notebooks training a chef.
+# Nobody has thought about the restaurant. Can they cook one dish in a reasonable
+# time? Can they handle ten tables at once? Does the kitchen fit in the space you
+# can afford? A brilliant chef who takes four hours per plate has no customers.
+#
+# **Three techniques, each with a plain-language version:**
+#
+# **1. KV caching — stop redoing work.** To write the 50th word, the model
+# normally re-reads all 49 previous words from scratch. Then for the 51st, it
+# re-reads all 50. Absurd — those earlier words haven't changed. Cache the work
+# and reuse it. This is not a minor tweak: it's often **10× or more**, and no
+# real system runs without it.
+#
+# **2. Quantization — store numbers less precisely.** Your model's numbers are
+# stored to many decimal places. Round them to fewer. The model gets **2–4×
+# smaller** and slightly worse — usually so slightly you can't tell.
+#
+# It's measuring flour with a scale that reads to the gram instead of the
+# milligram. Technically less precise; the bread is fine. This is how a model
+# that needs 14 GB fits in 4 GB, and it's why you can run a 7B model on a laptop.
+#
+# **3. Serving — one model, many users.** Handling requests without loading a
+# fresh copy per person.
+#
+# **What you'll have at the end:** a model that responds in a reasonable time,
+# takes a fraction of the memory, and can be called like any other service — plus
+# a capstone that runs the whole pipeline end to end.
+#
+# **What to expect, with numbers:**
+#
+# | | before | after |
+# |---|---|---|
+# | generating 200 tokens | ~30 s | ~2 s |
+# | model size on disk | 14 GB | 4 GB |
+# | quality | baseline | very slightly worse |
+#
+# **The thing worth internalizing.** Training happens once; inference happens
+# every single time anyone uses the model. A 2× inference win is worth more in
+# practice than a 2× training win — which is why so much of modern architecture
+# (notebook 05's GQA, for instance) is really about making serving cheap. This
+# notebook is where that finally makes sense.
+#
 # ## Why inference deserves its own notebook
 #
 # Training happens once; inference happens forever. And generation has a

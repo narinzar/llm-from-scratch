@@ -7,6 +7,44 @@
 #
 # **Time:** 60–90 min including a real training run.
 #
+# ## In plain language
+#
+# **What you're doing:** taking a model that already knows a lot — one that read
+# the actual internet, not children's stories — and teaching it your task,
+# on your own graphics card.
+#
+# **Why this notebook feels different.** Everything so far used models small
+# enough to be toys. This one is genuinely useful. The catch is that a real model
+# doesn't fit: fine-tuning a 7B model normally needs about **112 GB** and you
+# have 24.
+#
+# **The trick, in one sentence.** Don't change the model — leave every one of its
+# weights frozen and bolt on a tiny set of extra numbers that adjust its
+# behaviour. You train the extra numbers, roughly **0.3%** of the total, and the
+# other 99.7% never move.
+#
+# That's LoRA, and it's the difference between "impossible on this hardware" and
+# "an hour."
+#
+# **What you'll have at the end:** a fine-tuned model that fits on your card, an
+# adapter file of a few MB you can share, and — this is the part people
+# underrate — a clear method for telling whether one fine-tuning approach is
+# actually better than another.
+#
+# **What to expect:**
+#
+# | | |
+# |---|---|
+# | training time | 30–60 min |
+# | VRAM | ~6 GB with LoRA, ~10 GB with QLoRA on a bigger model |
+# | adapter size | a few MB, not GB |
+# | quality vs full fine-tuning | very close, often indistinguishable |
+#
+# **The mental shift worth making here.** An adapter is not a model — it's a
+# small patch that sits on top of one. You can keep a single base model in memory
+# and swap adapters per customer, per task, per language. That's how companies
+# serve thousands of "custom models" from one set of weights.
+#
 # ## First, the restaurant
 #
 # Before any of the mechanics, here is the picture to keep in your head for the

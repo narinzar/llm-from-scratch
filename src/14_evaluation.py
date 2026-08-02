@@ -6,6 +6,49 @@
 #
 # **Time:** 45–60 min.
 #
+# ## In plain language
+#
+# **What you're doing:** learning to find out whether your changes actually
+# helped — and, mostly, learning the many ways you'll accidentally lie to
+# yourself.
+#
+# **The everyday version.** You changed a recipe. Is it better?
+#
+# The tempting answer is to taste it yourself and decide. But you *made* it — you
+# want it to be better, you know which one is the new one, and you tasted the old
+# one last week. Every one of those biases your answer.
+#
+# What you'd actually need: serve both to people who don't know which is which,
+# enough people that it isn't luck, and check they didn't just prefer the one
+# served warmer.
+#
+# **Everyone skips this**, and it's why most claimed improvements aren't real.
+#
+# **Why this is the most important notebook in the course.** Every earlier
+# notebook has knobs — learning rate, LoRA rank, beta, temperature. Without
+# trustworthy measurement you're turning knobs in the dark and shipping
+# regressions confidently. Evaluation is what converts fiddling into progress.
+#
+# **What you'll have at the end:** four ways to measure a model, and — more
+# useful — a clear sense of when each one is lying.
+#
+# **The single most important idea, if you read nothing else.** Suppose you test
+# on 200 questions and score 71%. Run the *same* model again with a different
+# random seed and you might get 68% or 74%. That spread isn't the model changing;
+# it's noise.
+#
+# So if your shiny new method scores 73% against the old one's 71%, **you have
+# learned nothing.** The gap is smaller than the noise. To claim that 2 points
+# you'd need thousands of examples, or several runs, or both.
+#
+# There's a formula for how much noise to expect, and it takes ten seconds to
+# apply. Most published LLM improvements do not survive it.
+#
+# **What to expect emotionally:** this notebook will make you less confident
+# about results you were pleased with, including your own from notebooks 11 and
+# 13. That is the notebook working correctly. Being able to tell a real gain from
+# a lucky one is the difference between doing engineering and doing astrology.
+#
 # ## Why this notebook is the most important one
 #
 # Every technique in notebooks 04–13 has a knob you can turn. Without

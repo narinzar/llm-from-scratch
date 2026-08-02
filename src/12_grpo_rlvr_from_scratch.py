@@ -6,6 +6,51 @@
 #
 # **Time:** 60–75 min.
 #
+# ## In plain language
+#
+# **What you're doing:** letting the model teach *itself*, by trying a problem
+# several times and learning from which attempts turned out to be right.
+#
+# **The everyday version.** A child learning arithmetic. You don't hand them the
+# perfect method — you give them a problem, let them try, and tell them whether
+# the answer was right. They try again. Over time they work out an approach that
+# gets right answers, and *nobody ever described that approach to them*.
+#
+# The essential ingredient: **you can check the answer.** 7 × 8 is 56 or it
+# isn't. No opinion, no judge, no taste.
+#
+# **Why this is different from everything before it.** Notebooks 09–11 learned
+# from data humans produced. Here the model generates its **own** attempts and
+# learns from which ones worked. It's no longer limited by what's in the dataset
+# — it can discover approaches nobody wrote down.
+#
+# **That's not an overstatement.** This is the technique behind reasoning models
+# — o1, R1, and the rest. Nobody taught those models to "think step by step and
+# check their work." They discovered it, because longer careful reasoning
+# produced more right answers, and right answers scored higher.
+#
+# **How it works in one paragraph.** Give the model a question. Have it answer
+# **eight times** (it'll produce different attempts — that's the point). Check
+# which are correct. Now the clever bit: score each attempt *relative to the
+# others in its group*. Better than its siblings → make it more likely. Worse →
+# less likely. No separate judge model needed, because the group is the
+# yardstick. That's the "Group Relative" in GRPO.
+#
+# **What you'll have at the end:** the whole algorithm implemented yourself —
+# maybe 60 lines — plus a real understanding of when it silently does nothing.
+#
+# **What to expect — the honest part.** This notebook **doesn't train anything**.
+# Real GRPO needs a GPU and hours; that's notebook 13. Here you build the
+# machinery and test it on small deterministic examples where you can verify the
+# maths by hand. Less satisfying, far more instructive.
+#
+# **The one insight to keep.** If all eight attempts are right, or all eight are
+# wrong, you learn **nothing** — there's no "better than its siblings" when
+# they're all the same. Your problems must be ones the model gets right *some* of
+# the time. Too easy and too hard both teach nothing, which is why difficulty
+# selection matters more than any hyperparameter here. You'll measure this
+# yourself.
+#
 # ## The idea that changed post-training
 #
 # **The restaurant, one last time.** In notebook 09 you trained a food critic,
