@@ -7,6 +7,64 @@
 #
 # **Time:** 15 min for the TinyStories run, 3–6 h for the FineWeb-Edu run.
 #
+# ## What "training" actually means, in plain language
+#
+# This is the notebook where a model is created. It is worth being concrete about
+# what that sentence means, because "training an AI" sounds mystical and is not.
+#
+# **The model starts as random numbers.** Millions of them. Right now it knows
+# nothing — feed it text and it outputs noise.
+#
+# **Training is a loop that repeats a few thousand times.** Each pass through it
+# does exactly four things:
+#
+# 1. Grab a random chunk of text from your `.bin` file — say 512 tokens.
+# 2. Hide the last token and ask the model: *what comes next?*
+# 3. Compare its guess to the real answer. The gap is the **loss**.
+# 4. Nudge every one of those millions of numbers a tiny amount in the direction
+#    that would have made the guess better.
+#
+# That's it. Repeat a few thousand times and the numbers stop being random and
+# start encoding grammar, facts, and style — because those are what let you
+# predict text well.
+#
+# **Nobody tells the model any rules.** No one writes down "adjectives come
+# before nouns" or "sentences end with a full stop." Those patterns emerge
+# because they help step 3 go better. Everything a language model knows, it
+# learned from being repeatedly asked *what comes next*.
+#
+# **What you actually do:** run the cell, watch a number go down for fifteen
+# minutes, then read what the model writes.
+#
+# ### What you'll have at the end
+#
+# A file — `artifacts/checkpoints/smoke.pt`, a few dozen MB — holding the trained
+# numbers. Load it, give it a few words, and it continues them:
+#
+# > **you type:** `Once upon a time there was a little`
+# > **it writes:** `girl named Lily. She had a red ball and liked to play in the
+# > park with her friend Tom.`
+#
+# **That is the whole goal of this notebook.** Grammatical, coherent English that
+# the model invented — nobody wrote that sentence, it was generated one token at
+# a time from patterns it found on its own.
+#
+# **Be clear about what it will not do**, so you are not disappointed:
+#
+# | you might expect | reality |
+# |---|---|
+# | answer a question | no — it continues text, it does not respond (notebook 07 fixes this) |
+# | know facts about the world | no — it only ever read children's stories |
+# | do arithmetic | no |
+# | hold a conversation | no — it has no idea it is talking to anyone |
+# | write fluent simple English | **yes — and that is the win** |
+#
+# The difference between "continues text" and "answers questions" is the entire
+# subject of notebooks 07 onward. A model at this stage is like someone who has
+# read a lot and can finish your sentences, but has never been told that when
+# someone asks a question they are supposed to reply. That's a *separate* thing
+# to teach, and it comes later.
+#
 # ## The plan
 #
 # Do this in two stages, and **do not skip stage 1**:
@@ -18,6 +76,10 @@
 #
 # Stage 1 exists because debugging a 5-hour run is agony. If the loop is broken
 # you want to know in 15 minutes.
+#
+# In restaurant terms (notebook 08): this is the chef's fifteen years in Italy.
+# Expensive, done once, and it produces someone who can *cook* — not someone who
+# knows your menu. Everything after this notebook is teaching them your menu.
 
 # %%
 import math

@@ -375,6 +375,58 @@ for w in ["the", " the", "cat", "Antidisestablishmentarianism", "1234567"]:
 # notebook 02 measures properly, and it directly sets how much text fits in your
 # context window.
 #
+# ### Practice — guess before you run
+#
+# Reading about tokens does not build intuition; predicting does. For each string
+# below, **write down your guess** for how many tokens it becomes, then run the
+# cell.
+#
+# Use the rule of thumb — 1 token ≈ 4 characters — then adjust for what you just
+# learned: common words are cheap, rare words and numbers are expensive.
+#
+# 1. `"cat"`
+# 2. `"The quick brown fox jumps over the lazy dog."`
+# 3. `"3.14159265358979"`
+# 4. `"antidisestablishmentarianism"`
+# 5. `"🎉🎉🎉"`
+# 6. `"    "` (four spaces)
+#
+# Most people get 1 and 2 close, and are badly wrong on 3, 5 and 6. Those three
+# are where the real intuition lives.
+
+# %%
+practice = [
+    "cat",
+    "The quick brown fox jumps over the lazy dog.",
+    "3.14159265358979",
+    "antidisestablishmentarianism",
+    "🎉🎉🎉",
+    "    ",
+]
+
+print(f"{'text':<48}{'chars':>6}{'tokens':>8}{'ch/tok':>8}")
+print("-" * 70)
+for s in practice:
+    n = len(tok.encode(s))
+    print(f"{s!r:<48}{len(s):>6}{n:>8}{len(s)/n:>8.2f}")
+
+print("\nWhere the surprises come from:")
+print("  numbers  -> split into arbitrary chunks, no numeric meaning")
+print("  emoji    -> several tokens each; they are multi-byte characters")
+print("  spaces   -> runs of whitespace are their own tokens (matters for code)")
+
+# %% [markdown]
+# The whitespace result is why **tokenizers matter for code**. Python is
+# indentation-heavy, and a tokenizer that spends one token per space burns your
+# context window on empty air. Code-focused tokenizers add tokens for runs of 4,
+# 8, 12 spaces specifically to fix this — and it is a large part of why
+# code-specific models feel cheaper to run on code.
+#
+# The emoji result is why **non-English text costs more**. Notebook 02 measures
+# this properly and calls it the multilingual tax: the same sentence in Thai or
+# Hindi can cost 3–5× the tokens of its English translation, meaning less context
+# and higher API bills for the same content.
+#
 # ## Building the corpus: stream → filter → dedup → tokenize → `.bin`
 #
 # Now we turn a whole dataset into tokens. The output format is deliberately
@@ -477,10 +529,72 @@ def build_bin(
 # %% [markdown]
 # ### Build 1 — TinyStories (the smoke-test corpus)
 #
-# Start here. TinyStories is simple enough that a 10M-parameter model learns
-# fluent English on it in ~15 minutes. That makes it perfect for verifying your
-# training loop is correct: if your model *can't* learn TinyStories, you have a
-# bug, not a scale problem. Debug on this, then scale up.
+# **In plain language: what is about to happen, and why.**
+#
+# The next cell downloads about 92,000 short children's stories, converts them
+# into numbers, and saves those numbers to a single file on your disk. It takes
+# under a minute. When it finishes you will have a 40 MB file called
+# `tinystories_train.bin`.
+#
+# That file is **not a model**. Nothing has been trained yet. Think of it as the
+# textbook — you are printing the book now, and in notebook 04 the model will sit
+# down and read it. Building the textbook and reading it are separate jobs, which
+# is why they are separate notebooks.
+#
+# **What is TinyStories?** A dataset someone built by asking GPT-4 to write
+# millions of very short stories using only words a three- or four-year-old
+# knows. They look like this:
+#
+# > *Once upon a time there was a little girl named Lily. She liked to play with
+# > her red ball. One day the ball rolled under the bed and Lily was sad.*
+#
+# Simple vocabulary, simple grammar, always a beginning and an end.
+#
+# **Why start with children's stories instead of real text?** Because a small
+# model can actually learn them. Real web text needs a model with billions of
+# parameters to do anything useful. TinyStories is simple enough that a model
+# 1/1000th that size — one you can train on your own GPU in fifteen minutes —
+# genuinely learns to write coherent English.
+#
+# It is the empty car park before you drive on the motorway. You are not trying
+# to build something impressive here. You are checking that your car steers.
+#
+# **So what should you expect at the end of all this?** After notebook 04 trains
+# on this file, your model will produce things like:
+#
+# > *Once upon a time there was a little boy named Tim. Tim had a big red dog.
+# > The dog liked to run in the park. Tim was happy.*
+#
+# **That is success.** Not ChatGPT — not close. It cannot answer questions, hold
+# a conversation, do arithmetic, or tell you anything true about the world. It
+# writes simple stories, because simple stories are all it has ever seen. What
+# you will have proven is that *the machinery works*: your data pipeline, your
+# tokenizer, your model architecture, and your training loop are all correct end
+# to end. That is genuinely the hard part, and everything after it is scale.
+#
+# **The honest version of why this matters.** If you skipped straight to real web
+# text and your model produced gibberish, you would have no idea whether you had
+# a bug or simply needed more compute. Debugging that is miserable. Here, if the
+# model cannot learn TinyStories, you have a **bug** — full stop, no ambiguity,
+# because everyone else's models learn TinyStories easily. That certainty is what
+# you are buying.
+#
+# **Where this sits in the course:**
+#
+# ```
+#   you are here
+#        |
+#        v
+#   01 build the textbook  ->  04 model reads it  ->  07-13 teach it manners
+#   (numbers on disk)          (a model that          (answer questions,
+#                               writes stories)        follow instructions)
+# ```
+#
+# Now the technical framing of the same thing. TinyStories is simple enough that
+# a 10M-parameter model learns fluent English on it in ~15 minutes. That makes it
+# perfect for verifying your training loop is correct: if your model *can't*
+# learn TinyStories, you have a bug, not a scale problem. Debug on this, then
+# scale up.
 #
 # Note we skip the prose filter — TinyStories are short by design and the
 # `min_words` rule would reject most of them.
