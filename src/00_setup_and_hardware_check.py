@@ -7,6 +7,32 @@
 #
 # **Time:** 20–40 min (mostly downloads). **Run once.**
 #
+# ## In plain language
+#
+# **What you're doing:** checking that your graphics card works for this kind of
+# maths, and learning to predict how much of it will fit in memory.
+#
+# **The everyday version.** You've bought an oven and you're about to cook in it
+# for weeks. Before you start, you check two things: does it actually heat up,
+# and how big a dish fits inside? Getting halfway through a five-hour roast and
+# discovering the tray doesn't fit is the thing we're avoiding.
+#
+# **Why this isn't optional.** GPUs have a fixed amount of memory — yours has
+# 24 GB. If your model needs 30 GB, training doesn't slow down, it *stops*, with
+# an error, usually twenty minutes in. There's no warning. The skill you learn
+# here is doing the arithmetic beforehand, on paper, in about ten seconds.
+#
+# **What you'll have at the end:**
+#
+# - a confirmed-working PyTorch that actually computes on your GPU
+# - the ability to look at any model and say "that fits" or "that won't"
+# - a Hugging Face login so later notebooks can download models
+#
+# **What could go wrong:** almost all of it is one problem — the wrong PyTorch
+# build. Your RTX 5090 is new enough that ordinary `pip install torch` gives you
+# a version that *claims* to work and then fails on the first real calculation.
+# The next section is about that specifically. Don't skip it.
+#
 # ## The one gotcha that will waste your evening
 #
 # The RTX 5090 is **Blackwell**, CUDA compute capability **sm_120**. PyTorch

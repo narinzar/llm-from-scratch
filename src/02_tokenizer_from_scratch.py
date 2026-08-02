@@ -7,6 +7,45 @@
 #
 # **Time:** 30–45 min. **Hardware:** CPU only.
 #
+# ## In plain language
+#
+# **What you're doing:** building the thing that chops text into pieces, from
+# nothing. In notebook 01 you *used* one that already existed. Now you write it.
+#
+# **The everyday version.** Imagine compressing a book by finding the letter pair
+# that appears most often — say `t` followed by `h` — and replacing every `th`
+# with a single new symbol. Now repeat: find the most common pair *again* (maybe
+# your new `th` symbol followed by `e`), replace it, and keep going a few
+# thousand times.
+#
+# After enough rounds, common words like `the` are one symbol, while a rare word
+# like `zygote` stays in pieces. You've invented a private shorthand tuned to
+# whatever you fed it. **That is Byte-Pair Encoding**, and it is genuinely the
+# whole algorithm — a loop that merges the most frequent pair, run a few thousand
+# times.
+#
+# **What you'll have at the end:** a working tokenizer you wrote yourself, saved
+# to `artifacts/tokenizer_tinystories_2k.json`, plus a measurement of how it
+# compares to GPT-2's.
+#
+# **What to expect it to be:** worse than GPT-2's, and that's correct. You'll
+# train on a few megabytes of children's stories; GPT-2 trained on 40 GB of web
+# text. You're aiming to understand the mechanism, not to win.
+#
+# **The concrete expectation:** your tokenizer will get roughly **3.5–4.0 bytes
+# per token** on held-out stories; GPT-2 gets about **4.2**. Close enough to show
+# your implementation is right, worse enough to show scale matters.
+#
+# **Why write it yourself when a library exists?** Because three real,
+# frequently-encountered LLM failures are tokenizer failures, and they stop being
+# mysterious once you've built one:
+#
+# - models being bad at arithmetic and at counting letters in a word
+# - prompts behaving differently when they end with a space
+# - non-English text costing several times more to process
+#
+# You'll reproduce all three yourself in this notebook.
+#
 # ## Why tokenization deserves a whole notebook
 #
 # A surprising number of "the model is dumb" bugs are actually tokenizer bugs:

@@ -7,6 +7,45 @@
 #
 # **Time:** 60–90 min. **Hardware:** CPU is fine; GPU is faster.
 #
+# ## In plain language
+#
+# **What you're doing:** building the actual machine — the thing that reads
+# tokens and predicts the next one. Every model you've heard of, GPT-4, Claude,
+# Llama, is this same design at a larger size.
+#
+# **The everyday version.** Take the sentence *"The animal didn't cross the
+# street because **it** was too tired."* What does *it* refer to — the animal or
+# the street?
+#
+# You resolved that instantly, and here's roughly how: you looked back at the
+# other words and worked out which ones matter for understanding *it*. `animal`
+# matters a lot. `street` a little. `because` barely at all. You **paid attention
+# selectively**.
+#
+# That's the mechanism. It's literally called attention, and it's most of what
+# you're building. Each word looks at every other word and decides how much each
+# one matters to it — and crucially, the model *learns* what to look at, rather
+# than being told.
+#
+# **What you'll have at the end:** a complete GPT, written by you, that trains
+# and generates text. A few hundred lines. It goes into `llmfs/model.py` and
+# every later notebook imports it.
+#
+# **How this notebook works:** small pieces first, assembled at the end. One
+# position attending to four others, then batches, then multiple heads, then the
+# full model. Every step prints shapes and numbers so you can see it working
+# rather than take it on faith.
+#
+# **The expectation at the end** is a test that takes 30 seconds: feed the model
+# the same 4 sentences 400 times and see if it can memorize them. Loss should
+# fall from **~10.8 to under 0.05**. That proves the wiring is correct. A
+# transformer that *can't* memorize four sentences has a bug, and finding it now
+# is far cheaper than finding it after a five-hour training run.
+#
+# **What you don't need:** you don't need to follow the matrix algebra to get
+# value here. Run the cells, read the shapes, watch the numbers. Understanding
+# follows from seeing it work.
+#
 # ## How to use this notebook
 #
 # Every component is built twice: first as explicit loops and small tensors you

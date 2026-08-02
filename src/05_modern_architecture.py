@@ -6,6 +6,35 @@
 #
 # **Time:** 45–60 min.
 #
+# ## In plain language
+#
+# **What you're doing:** taking the transformer you built in notebook 03 — which
+# is a 2019 design — and upgrading four parts of it to what everyone actually
+# uses in 2024+.
+#
+# **The everyday version.** Cars in 1990 and 2024 have the same layout: engine,
+# four wheels, steering wheel. Nobody reinvented the car. But fuel injection
+# replaced carburettors, discs replaced drums, and the result is meaningfully
+# better while looking identical from outside.
+#
+# Transformers are the same story. The 2017 design was right. Four parts got
+# swapped, each fixing one specific annoyance, and modern models are the same
+# machine with better components.
+#
+# **What you'll have at the end:** a Llama-style model — the same architecture
+# family as Llama, Qwen and Mistral — with each of the four changes implemented
+# and measured, so you can see what each one actually bought.
+#
+# **What to expect:** none of these is dramatic on its own. RMSNorm makes norms
+# ~10% cheaper. GQA cuts inference memory 4×. The quality gains are small enough
+# that you can't see them on a toy model. **Don't expect a revelation** — expect
+# to understand why the code in every modern model's repo looks the way it does,
+# and to be able to read it without confusion.
+#
+# **The single most useful thing here** is probably RoPE. It's why modern models
+# can handle 128k-token contexts when GPT-2 was stuck at 1024. You'll implement
+# it and then *demonstrate* the extrapolation yourself.
+#
 # ## What actually changed
 #
 # The transformer block is remarkably unchanged since 2017. Four things were

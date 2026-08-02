@@ -6,6 +6,43 @@
 #
 # **Time:** 45 min.
 #
+# ## In plain language
+#
+# **What you're doing:** learning to answer two questions with arithmetic instead
+# of guesswork — *how big should my model be?* and *why is my training so slow?*
+#
+# **The everyday version of scaling laws.** You have a fixed budget and you're
+# opening a restaurant. Do you spend it on one brilliant expensive chef, or on a
+# decent chef plus far better ingredients?
+#
+# Turns out this has a *measured answer* for language models. If you have a fixed
+# amount of GPU time, there's a mathematically best split between "bigger model"
+# and "more data" — and for years everybody got it wrong in the same direction,
+# building models far too large for the data they were fed. The correction
+# (Chinchilla, 2022) says roughly **20 tokens of text per parameter of model**.
+#
+# That single number tells you a 124M-parameter model wants about 2.5 billion
+# tokens. Not 100 million (undertrained), not 50 billion (wasted compute).
+#
+# **The everyday version of the speed half.** Your GPU has a top speed, and your
+# training loop probably runs at a fraction of it — usually because the GPU is
+# sitting idle waiting for something else, exactly like a fast chef waiting on a
+# slow dishwasher. This notebook teaches you to measure that fraction and find
+# the dishwasher.
+#
+# **What you'll have at the end:**
+#
+# - a formula that tells you what model size to train for a given budget
+# - a measurement of how much of your GPU you're actually using
+# - three optimizations, in order of how much they pay off
+#
+# **What to expect:** the optimizations are worth roughly **2–4× total speed** on
+# a real run. That turns a 5-hour job into 1.5 hours. It's the difference between
+# trying three ideas today and trying one.
+#
+# **This notebook is mostly arithmetic**, and it's the arithmetic that stops you
+# wasting a weekend. Read the numbers, not the code.
+#
 # ## Part A — Scaling laws
 #
 # ### Chinchilla, and what it actually says
